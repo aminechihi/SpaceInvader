@@ -99,7 +99,7 @@
         width: 100%;
         height: 100%;
         background-color: #000;
-        background-image: url("https://cdn.wallpapersafari.com/63/68/f1g5Ap.png");
+        background-image: url("https://cdn.wallpapersafari.com/89/68/v8ZRoa.png");
         background-size: auto;
         animation: scroll-background 60s linear infinite;
         z-index: 20;
@@ -1081,33 +1081,33 @@
       function loadAllAssets() {
         resizeCanvas();
 
-        shipImages.ship1.onload = assetLoaded;
-        shipImages.ship1.src = "ship1.png";
-        shipImages.ship2.onload = assetLoaded;
-        shipImages.ship2.src = "ship2.png";
-        shipImages.ship3.onload = assetLoaded;
-        shipImages.ship3.src = "ship3.png";
-        pirateImage.onload = assetLoaded;
-        pirateImage.src = "Pirate.png";
+        // UPDATED: Added error handling
+        const setupImageLoader = (img, src) => {
+          img.onload = assetLoaded;
+          img.onerror = () => {
+            console.error(`Failed to load asset: ${src}`);
+            // You could optionally call assetLoaded() here to prevent the game from getting stuck,
+            // but it's better to see the error and fix the path.
+          };
+          img.src = src;
+          assetCache.appendChild(img);
+        };
 
-        assetCache.appendChild(shipImages.ship1);
-        assetCache.appendChild(shipImages.ship2);
-        assetCache.appendChild(shipImages.ship3);
-        assetCache.appendChild(pirateImage);
+        setupImageLoader(shipImages.ship1, "ship1.png");
+        setupImageLoader(shipImages.ship2, "ship2.png");
+        setupImageLoader(shipImages.ship3, "ship3.png");
+        setupImageLoader(pirateImage, "Pirate.png");
 
         asteroidImageSources.forEach((src) => {
           const i = new Image();
-          i.onload = assetLoaded;
-          i.src = src;
           asteroidImages.push(i);
-          assetCache.appendChild(i);
+          setupImageLoader(i, src);
         });
+
         planetSpriteSheetSources.forEach((src) => {
           const i = new Image();
-          i.onload = assetLoaded;
-          i.src = src;
           planetSpriteSheets.push(i);
-          assetCache.appendChild(i);
+          setupImageLoader(i, src);
         });
       }
 
