@@ -569,7 +569,6 @@
 
       async function initFirebase() {
         try {
-          // UPDATED: Replaced placeholder with your provided config
           const firebaseConfig = {
             apiKey: "AIzaSyCFWrErGbsxkNwVMhJMyDYkpY1FO3B33Yk",
             authDomain: "superinvader-af884.firebaseapp.com",
@@ -580,27 +579,11 @@
             measurementId: "G-1VFFXP0X67",
           };
 
-          // This logic is for a different environment, we'll use your config directly
-          // const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-          // if (firebaseConfigStr === '{}') {
-          //     console.warn("Firebase config is missing.");
-          //     return;
-          // }
-          // const firebaseConfig = JSON.parse(firebaseConfigStr);
-
           const app = initializeApp(firebaseConfig);
           db = getFirestore(app);
           auth = getAuth(app);
           setLogLevel("debug");
-
-          // This logic is for a different auth environment, we'll use anonymous sign-in
-          // if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          //     await signInWithCustomToken(auth, __initial_auth_token);
-          // } else {
-          //     await signInAnonymously(auth);
-          // }
           await signInAnonymously(auth);
-
           console.log(
             "Firebase initialized and user signed in.",
             auth.currentUser?.uid
@@ -614,8 +597,8 @@
       // --- LEADERBOARD LOGIC ---
       let leaderboardData = [];
       function setupLeaderboardListener() {
-        if (!db) return; // Guard against missing config
-        const leaderboardCol = collection(db, `leaderboard`); // Simplified path
+        if (!db) return;
+        const leaderboardCol = collection(db, `leaderboard`);
         const q = query(leaderboardCol);
 
         onSnapshot(
@@ -649,7 +632,7 @@
       async function saveScore(name, scoreToSave) {
         if (!name || scoreToSave <= 0 || !db) return;
         try {
-          const leaderboardCol = collection(db, `leaderboard`); // Simplified path
+          const leaderboardCol = collection(db, `leaderboard`);
           await addDoc(leaderboardCol, {
             name: name,
             score: scoreToSave,
@@ -784,7 +767,6 @@
         "Asteroids/15.png",
       ];
 
-      // NEW: Audio assets
       const radarAudio = new Audio("Radar.mp3");
       const loopAudio = new Audio("loop.mp3");
       const alarmAudio = new Audio("alarm.mp3");
@@ -818,6 +800,7 @@
       let pendingInvasionRarity = null;
       let stealProgress = 0;
       let station = null;
+      let nearestStationInfo = { distance: Infinity };
 
       // --- PLAYER & PIRATE ---
       const player = {
@@ -920,23 +903,117 @@
           }
         }
 
-        if (!hasPlanet && rng() < 0.03) {
-          // ~3% chance for station in empty sectors
+        if (!hasPlanet && !station && rng() < 0.03) {
+          // Only one station per game
           station = {
             x: sectorX * SECTOR_SIZE + rng() * SECTOR_SIZE,
             y: sectorY * SECTOR_SIZE + rng() * SECTOR_SIZE,
             radius: 100,
+            image: stationImage,
           };
         }
       }
 
       // --- PIRATE MECHANICS ---
       function spawnPirate() {
-        // ... (pirate logic is unchanged)
+        const spawnAngle = Math.random() * Math.PI * 2;
+        const spawnDist = Math.max(canvas.width, canvas.height);
+        pirates.push({
+          x: player.x + Math.cos(spawnAngle) * spawnDist,
+          y: player.y + Math.sin(spawnAngle) * spawnDist,
+          radius: 20,
+          angle: 0,
+          rotationSpeed: 0.07,
+          speed: 0,
+          state: "chasing",
+          timer: PIRATE_INVASION_DURATION,
+        });
+        alarmAudio.play().catch((e) => console.warn("Alarm could not play"));
+        pirateWarning.style.display = "block";
       }
 
       function updatePirates() {
-        // ... (pirate logic is unchanged)
+        if (pirates.length === 0) return;
+
+        let isPlayerBeingStolenFrom = false;
+
+        for (let i = pirates.length - 1; i >= 0; i--) {
+          const pirate = pirates[i];
+          pirate.timer--;
+
+          if (pirate.state === "chasing") {
+            if (pirate.timer <= 0) {
+              pirate.state = "escaping";
+            }
+
+            const predictionTime = 30 + player.speed * 2;
+            const predictedPlayerX = player.x + player.velX * predictionTime;
+            const predictedPlayerY = player.y + player.velY * predictionTime;
+
+            const dx = predictedPlayerX - pirate.x;
+            const dy = predictedPlayerY - pirate.y;
+            const targetAngle = Math.atan2(dy, dx);
+
+            let angleDiff = targetAngle - pirate.angle;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            pirate.angle += angleDiff * pirate.rotationSpeed;
+            pirate.angle %= Math.PI * 2;
+
+            const targetMaxSpeed = keys.Shift
+              ? PIRATE_TURBO_MAX_SPEED
+              : PIRATE_BASE_MAX_SPEED;
+            const targetAcceleration = keys.Shift
+              ? PIRATE_TURBO_ACCELERATION
+              : PIRATE_BASE_ACCELERATION;
+            pirate.speed = Math.min(
+              targetMaxSpeed,
+              pirate.speed + targetAcceleration
+            );
+
+            const stealDist = Math.sqrt(
+              Math.pow(player.x - pirate.x, 2) +
+                Math.pow(player.y - pirate.y, 2)
+            );
+            if (stealDist < PIRATE_STEAL_RANGE) {
+              isPlayerBeingStolenFrom = true;
+            }
+          } else if (pirate.state === "escaping") {
+            pirate.speed += PIRATE_BASE_ACCELERATION;
+            if (pirate.timer < -300) {
+              pirates.splice(i, 1);
+            }
+          }
+
+          if (pirate) {
+            // Check if pirate still exists after splice
+            pirate.x += pirate.speed * Math.cos(pirate.angle);
+            pirate.y += pirate.speed * Math.sin(pirate.angle);
+          }
+        }
+
+        if (isPlayerBeingStolenFrom) {
+          stealProgress = Math.min(100, stealProgress + 0.5);
+          stealBarContainer.style.display = "block";
+          stealBar.style.width = `${stealProgress}%`;
+        } else {
+          stealProgress = Math.max(0, stealProgress - 0.1);
+          if (stealProgress > 0) {
+            stealBar.style.width = `${stealProgress}%`;
+          } else {
+            stealBarContainer.style.display = "none";
+          }
+        }
+
+        if (stealProgress >= 100) {
+          score = 0;
+          pirates.forEach((p) => (p.state = "escaping"));
+        }
+
+        if (pirates.length === 0) {
+          pirateWarning.style.display = "none";
+          stealBarContainer.style.display = "none";
+        }
       }
 
       // --- INPUT & EVENT LISTENERS ---
@@ -1022,30 +1099,122 @@
           document.getElementById("playerNameInput").value = "";
           undock();
         } else {
-          alert("Please enter a name."); // A simple alert is fine for this modal
+          document.getElementById("playerNameInput").style.borderColor = "red";
         }
       });
       dockButton.addEventListener("click", dockAtStation);
 
       function startGame(shipId) {
-        // ... (startGame logic unchanged)
+        player.image = shipImages[shipId];
+        shipSelectScreen.style.display = "none";
+        canvas.style.display = "block";
+
+        resetGameData();
+        gameState = "playing";
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+        loopAudio.loop = true;
+        loopAudio.volume = 0.4;
+        loopAudio
+          .play()
+          .catch((e) => console.warn("Background audio auto-play failed."));
+
+        gameLoop();
       }
 
       function resetGameData() {
-        // ... (resetGameData logic unchanged)
+        player.x = 0;
+        player.y = 0;
+        player.speed = 0;
+        player.angle = 0;
+        player.velX = 0;
+        player.velY = 0;
+        camera.x = 0;
+        camera.y = 0;
+        planets = [];
+        asteroids = [];
+        generatedSectors.clear();
+        score = 0;
+        pirates = [];
         station = null;
+        stealProgress = 0;
+        pirateWarning.style.display = "none";
+        stealBarContainer.style.display = "none";
+        toggleDiscoveryPanel(false);
       }
 
       function toggleDiscoveryPanel(show, mineral = null) {
-        // ... (toggleDiscoveryPanel logic unchanged)
+        if (show && mineral) {
+          isPanelOpen = true;
+          discoveryPanel.style.display = "block";
+          document.getElementById(
+            "discovery-name"
+          ).textContent = `[${mineral.rarity}] ${mineral.name}`;
+          document.getElementById(
+            "discovery-name"
+          ).className = `rarity-${mineral.rarity}`;
+          document.getElementById(
+            "discovery-formula"
+          ).textContent = `Formula: ${mineral.formula}`;
+          document.getElementById("discovery-description").textContent =
+            mineral.description;
+        } else {
+          if (isPanelOpen) {
+            isPanelOpen = false;
+            discoveryPanel.style.display = "none";
+            triggerPendingInvasion();
+          }
+        }
       }
 
       function triggerPendingInvasion() {
-        // ... (triggerPendingInvasion logic unchanged)
+        if (!pendingInvasionRarity) return;
+
+        const rarity = pendingInvasionRarity;
+        pendingInvasionRarity = null;
+        const rarityRoll = Math.random();
+
+        if (rarity === "Unique") {
+          spawnPirate();
+          spawnPirate();
+        } else if (
+          (rarity === "Legendary" && rarityRoll < 0.75) ||
+          (rarity === "Rare" && rarityRoll < 0.25)
+        ) {
+          spawnPirate();
+        }
+      }
+
+      const DOCKING_RANGE = 200;
+
+      function isNearStation() {
+        return station && nearestStationInfo.distance < DOCKING_RANGE;
+      }
+
+      function dockAtStation() {
+        if (!isNearStation()) return;
+        gameState = "docked";
+        document.getElementById("save-score-value").textContent = score;
+        saveScoreModal.style.display = "flex";
+      }
+
+      function undock() {
+        saveScoreModal.style.display = "none";
+        gameState = "playing";
       }
 
       function generateStars() {
-        // ... (generateStars logic unchanged)
+        stars = [];
+        const base = (canvas.width * canvas.height) / 3000;
+        starLayers.forEach((l) => {
+          for (let i = 0; i < Math.floor(base * l.countMultiplier); i++)
+            stars.push({
+              x: Math.random() * canvas.width,
+              y: Math.random() * canvas.height,
+              radius: l.radius,
+              speed: l.speed,
+            });
+        });
       }
       function resizeCanvas() {
         canvas.width = window.innerWidth;
@@ -1061,12 +1230,383 @@
           return;
         }
 
-        // ... (rest of the game loop logic is unchanged)
+        // 1. UPDATE STATE
+        if (gameState === "playing" && !isPanelOpen) {
+          const accel = keys.Shift
+            ? player.turboAcceleration
+            : player.acceleration;
+          if (keys.ArrowLeft) player.angle -= player.rotationSpeed;
+          if (keys.ArrowRight) player.angle += player.rotationSpeed;
+          if (keys.ArrowUp) player.speed += accel;
+          if (keys[" "]) player.speed *= 0.92;
+          player.speed *= player.friction;
+          player.velX = player.speed * Math.cos(player.angle);
+          player.velY = player.speed * Math.sin(player.angle);
+          player.x += player.velX;
+          player.y += player.velY;
+        }
+        if (gameState === "playing") {
+          camera.x = player.x;
+          camera.y = player.y;
+
+          const sX = Math.floor(player.x / SECTOR_SIZE),
+            sY = Math.floor(player.y / SECTOR_SIZE);
+          for (let y = -1; y <= 1; y++) {
+            for (let x = -1; x <= 1; x++)
+              generateEntitiesForSector(sX + x, sY + y);
+          }
+
+          updatePirates();
+
+          asteroids.forEach((a) => {
+            a.x += a.speedX;
+            a.y += a.speedY;
+            a.angle += a.rotationSpeed;
+            const dx = a.x - player.x,
+              dy = a.y - player.y,
+              dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < REPULSION_RANGE) {
+              const forceAngle = Math.atan2(dy, dx),
+                forceMagnitude =
+                  REPULSION_STRENGTH * (1 - dist / REPULSION_RANGE);
+              a.speedX += Math.cos(forceAngle) * forceMagnitude;
+              a.speedY += Math.sin(forceAngle) * forceMagnitude;
+            }
+          });
+
+          planets.forEach((p) => {
+            p.animationTimer++;
+            if (p.animationTimer > p.animationSpeed) {
+              p.animationTimer = 0;
+              p.currentFrame = (p.currentFrame + 1) % p.frameCount;
+            }
+          });
+
+          if (station) {
+            const dx = player.x - station.x;
+            const dy = player.y - station.y;
+            nearestStationInfo.distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (isNearStation()) {
+              dockPrompt.style.display = "block";
+              dockButton.style.display = "flex";
+            } else {
+              dockPrompt.style.display = "none";
+              dockButton.style.display = "none";
+            }
+          } else {
+            nearestStationInfo.distance = Infinity;
+            dockPrompt.style.display = "none";
+            dockButton.style.display = "none";
+          }
+        }
+
+        // 2. DRAW EVERYTHING
+        ctx.save();
+        if (gameState === "playing" && keys.Shift && player.speed > 5) {
+          const shake = player.speed * 0.2;
+          ctx.translate(
+            (Math.random() - 0.5) * shake,
+            (Math.random() - 0.5) * shake
+          );
+        }
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        stars.forEach((s) => {
+          const pX =
+            (((s.x - camera.x * s.speed) % canvas.width) + canvas.width) %
+            canvas.width;
+          const pY =
+            (((s.y - camera.y * s.speed) % canvas.height) + canvas.height) %
+            canvas.height;
+          if (keys.Shift && player.speed > 2) {
+            const len = player.speed * s.speed * 0.6,
+              sX = pX - Math.cos(player.angle) * len,
+              sY = pY - Math.sin(player.angle) * len;
+            ctx.beginPath();
+            ctx.moveTo(sX, sY);
+            ctx.lineTo(pX, pY);
+            ctx.strokeStyle = "#FFF";
+            ctx.lineWidth = s.radius * 2;
+            ctx.stroke();
+          } else {
+            ctx.beginPath();
+            ctx.arc(pX, pY, s.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#FFF";
+            ctx.fill();
+          }
+        });
+
+        let minDistance = Infinity;
+        let currentNearestPlanet = null;
+        planets.forEach((p) => {
+          const psX = p.x - camera.x + canvas.width / 2,
+            psY = p.y - camera.y + canvas.height / 2;
+          if (
+            psX + p.radius > 0 &&
+            psX - p.radius < canvas.width &&
+            psY + p.radius > 0 &&
+            psY - p.radius < canvas.height
+          ) {
+            const sourceX = p.currentFrame * p.frameWidth;
+            ctx.drawImage(
+              p.sheet,
+              sourceX,
+              0,
+              p.frameWidth,
+              p.sheet.height,
+              psX - p.radius,
+              psY - p.radius,
+              p.width,
+              p.height
+            );
+          }
+          if (gameState === "playing") {
+            const dx = player.x - p.x,
+              dy = player.y - p.y,
+              dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minDistance) {
+              minDistance = dist;
+              currentNearestPlanet = p;
+            }
+            if (dist < p.radius + 100 && !p.discovered) {
+              p.discovered = true;
+              score += p.mineral.score;
+              toggleDiscoveryPanel(true, p.mineral);
+              pendingInvasionRarity = p.mineral.rarity;
+            }
+          }
+        });
+        asteroids.forEach((a) => {
+          const asX = a.x - camera.x + canvas.width / 2,
+            asY = a.y - camera.y + canvas.height / 2;
+          if (
+            asX + a.radius > 0 &&
+            asX - a.radius < canvas.width &&
+            asY + a.radius > 0 &&
+            asY - a.radius < canvas.height
+          ) {
+            ctx.save();
+            ctx.translate(asX, asY);
+            ctx.rotate(a.angle);
+            ctx.drawImage(
+              a.image,
+              -a.radius,
+              -a.radius,
+              a.radius * 2,
+              a.radius * 2
+            );
+            ctx.restore();
+          }
+        });
+
+        if (station) {
+          const sX = station.x - camera.x + canvas.width / 2;
+          const sY = station.y - camera.y + canvas.height / 2;
+          if (
+            sX + station.radius > 0 &&
+            sX - station.radius < canvas.width &&
+            sY + station.radius > 0 &&
+            sY - station.radius < canvas.height
+          ) {
+            ctx.drawImage(
+              station.image,
+              sX - station.radius,
+              sY - station.radius,
+              station.radius * 2,
+              station.radius * 2
+            );
+          }
+        }
+
+        pirates.forEach((pirate) => {
+          const pScreenX = pirate.x - camera.x + canvas.width / 2;
+          const pScreenY = pirate.y - camera.y + canvas.height / 2;
+
+          if (pirate.state === "chasing") {
+            ctx.beginPath();
+            ctx.arc(pScreenX, pScreenY, PIRATE_STEAL_RANGE, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 0, 0, 0.1)";
+            ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          ctx.save();
+          ctx.translate(pScreenX, pScreenY);
+          ctx.rotate(pirate.angle + Math.PI / 2);
+          ctx.drawImage(
+            pirateImage,
+            -pirateImage.width / 2,
+            -pirateImage.height / 2
+          );
+          ctx.restore();
+        });
+
+        if (currentNearestPlanet) {
+          nearestPlanetInfo = {
+            name: currentNearestPlanet.discovered
+              ? currentNearestPlanet.mineral.name
+              : "Unknown Planet",
+            distance: minDistance,
+            discovered: currentNearestPlanet.discovered,
+          };
+        }
+
+        const RADAR_RANGE = 2000;
+        if (
+          gameState === "playing" &&
+          !isPanelOpen &&
+          currentNearestPlanet &&
+          !currentNearestPlanet.discovered &&
+          minDistance < RADAR_RANGE
+        ) {
+          if (!isRadarPlaying) {
+            radarAudio.loop = true;
+            radarAudio
+              .play()
+              .catch((e) => console.warn("Audio policy warning"));
+            isRadarPlaying = true;
+          }
+        } else {
+          if (isRadarPlaying) {
+            radarAudio.pause();
+            radarAudio.currentTime = 0;
+            isRadarPlaying = false;
+          }
+        }
+
+        if (gameState === "playing" && player.image) {
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate(player.angle + Math.PI / 2);
+          ctx.drawImage(
+            player.image,
+            -player.image.width / 2,
+            -player.image.height / 2
+          );
+          ctx.restore();
+        }
+
+        if (gameState === "playing") {
+          ctx.font = '16px "Press Start 2P"';
+          ctx.fillStyle = "white";
+          ctx.textAlign = "left";
+          ctx.fillText(`Score: ${score}`, 10, 30);
+          if (nearestPlanetInfo.name) {
+            ctx.fillStyle = nearestPlanetInfo.discovered
+              ? "lightgreen"
+              : "white";
+            ctx.fillText(
+              `${nearestPlanetInfo.name} - ${Math.round(
+                nearestPlanetInfo.distance
+              )}`,
+              10,
+              60
+            );
+          }
+        }
+
+        ctx.restore();
+        animationFrameId = requestAnimationFrame(gameLoop);
       }
 
       // --- TOUCH CONTROLS SETUP ---
       function setupTouchControls() {
-        // ... (touch controls logic is unchanged)
+        const isTouch =
+          "ontouchstart" in window || navigator.maxTouchPoints > 0;
+        if (!isTouch) return;
+
+        touchControls.style.display = "block";
+
+        const joystickBase = document.getElementById("joystick-base");
+        const joystickKnob = document.getElementById("joystick-knob");
+        const thrustButton = document.getElementById("thrust-button");
+        const turboButton = document.getElementById("turbo-button");
+        const brakeButton = document.getElementById("brake-button");
+
+        let joyStickActive = false;
+        let joyStickId = null;
+
+        joystickBase.addEventListener(
+          "touchstart",
+          (e) => {
+            e.preventDefault();
+            if (joyStickActive) return;
+            joyStickActive = true;
+            joyStickId = e.changedTouches[0].identifier;
+          },
+          { passive: false }
+        );
+
+        window.addEventListener(
+          "touchmove",
+          (e) => {
+            if (!joyStickActive) return;
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+              if (touch.identifier === joyStickId) {
+                const rect = joystickBase.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const dx = touch.clientX - centerX;
+
+                const threshold = rect.width * 0.2;
+                if (dx < -threshold) {
+                  keys.ArrowLeft = true;
+                  keys.ArrowRight = false;
+                } else if (dx > threshold) {
+                  keys.ArrowLeft = false;
+                  keys.ArrowRight = true;
+                } else {
+                  keys.ArrowLeft = false;
+                  keys.ArrowRight = false;
+                }
+
+                const clampedX = Math.max(
+                  -rect.width / 2,
+                  Math.min(rect.width / 2, dx)
+                );
+                joystickKnob.style.transform = `translateX(${clampedX}px)`;
+              }
+            }
+          },
+          { passive: false }
+        );
+
+        window.addEventListener("touchend", (e) => {
+          for (let touch of e.changedTouches) {
+            if (touch.identifier === joyStickId) {
+              joyStickActive = false;
+              joyStickId = null;
+              keys.ArrowLeft = false;
+              keys.ArrowRight = false;
+              joystickKnob.style.transform = `translateX(0px)`;
+            }
+          }
+        });
+
+        const setupButton = (element, key) => {
+          element.addEventListener(
+            "touchstart",
+            (e) => {
+              e.preventDefault();
+              keys[key] = true;
+              element.classList.add("active");
+            },
+            { passive: false }
+          );
+          element.addEventListener("touchend", (e) => {
+            e.preventDefault();
+            keys[key] = false;
+            element.classList.remove("active");
+          });
+        };
+
+        setupButton(thrustButton, "ArrowUp");
+        setupButton(turboButton, "Shift");
+        setupButton(brakeButton, " ");
       }
 
       // --- START THE GAME (Asset Loading) ---
@@ -1088,7 +1628,7 @@
         setupImageLoader(pirateImage, "Pirate.png");
         setupImageLoader(
           stationImage,
-          "https://placehold.co/128x128/3333ff/FFFFFF?text=Station"
+          "https://placehold.co/200x200/808080/FFFFFF?text=Station"
         );
 
         asteroidImageSources.forEach((src) => {
