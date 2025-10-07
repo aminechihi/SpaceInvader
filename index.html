@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Super Invader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Make the canvas fill the entire screen */
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        font-family: "Press Start 2P", cursive;
+        color: white;
+      }
+      canvas {
+        display: none; /* Hidden until game starts */
+      }
+
+      #asset-cache {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+
+      #crt-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10;
+      }
+      #crt-overlay::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.4) 0px,
+          rgba(0, 0, 0, 0.4) 1px,
+          transparent 1px,
+          transparent 2px
+        );
+        opacity: 0.9;
+      }
+      #crt-overlay::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          ellipse at center,
+          rgba(0, 0, 0, 0) 50%,
+          rgba(0, 0, 0, 0.85) 100%
+        );
+        animation: flicker 0.1s infinite;
+      }
+      @keyframes flicker {
+        0% {
+          opacity: 0.9;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.9;
+        }
+      }
+
+      /* NEW: Animated background for menus */
+      @keyframes scroll-background {
+        from {
+          background-position: 0 0;
+        }
+        to {
+          background-position: -512px 0;
+        }
+      }
+
+      .game-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        /* UPDATED: Animated nebula background */
+        background-color: #000;
+        background-image: url("https://i.imgur.com/sSU4s5b.png");
+        background-size: auto; /* Let it tile */
+        animation: scroll-background 60s linear infinite;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      .game-screen h1 {
+        font-size: 4em;
+        text-shadow: 4px 4px #00ffff;
+        margin-bottom: 50px;
+      }
+
+      .menu-button {
+        font-family: "Press Start 2P", cursive;
+        font-size: 1.5em;
+        padding: 15px 30px;
+        background-color: #333;
+        color: white;
+        border: 2px solid white;
+        cursor: pointer;
+        margin-top: 30px;
+        text-shadow: 2px 2px #000;
+      }
+      .menu-button:hover {
+        background-color: #00ffff;
+        color: #000;
+      }
+      .menu-button:disabled {
+        background-color: #222;
+        color: #555;
+        border-color: #555;
+        cursor: not-allowed;
+      }
+
+      #ship-select-container {
+        display: flex;
+        gap: 40px;
+      }
+
+      .ship-card {
+        border: 2px solid #888;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        background: rgba(0, 0, 0, 0.5); /* Add a slight background to cards */
+      }
+      .ship-card:hover {
+        border-color: #00ffff;
+        box-shadow: 0 0 15px #00ffff;
+        transform: scale(1.05);
+      }
+      .ship-card img {
+        width: 128px;
+        height: 128px;
+        image-rendering: pixelated;
+      }
+      .ship-card p {
+        margin: 5px 0 0 0;
+        font-size: 0.8em;
+      }
+      .ship-card.locked {
+        cursor: not-allowed;
+        filter: grayscale(1) brightness(0.5);
+      }
+      .ship-card.locked:hover {
+        border-color: #888;
+        box-shadow: none;
+        transform: none;
+      }
+
+      #discovery-panel {
+        display: none;
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        max-width: 800px;
+        padding: 20px;
+        background: rgba(10, 20, 40, 0.85);
+        border: 2px solid #00ffff;
+        color: #fff;
+        text-align: center;
+        z-index: 15;
+        box-shadow: 0 0 15px #00ffff;
+      }
+      #discovery-panel h2 {
+        margin-top: 0;
+        font-size: 1.5em;
+      }
+      #discovery-panel p {
+        margin: 10px 0;
+        font-size: 0.9em;
+        line-height: 1.4;
+      }
+      #discovery-close-prompt {
+        margin-top: 15px;
+        font-size: 0.8em;
+        color: #aaa;
+      }
+      .rarity-Common {
+        color: #ffffff;
+      }
+      .rarity-Rare {
+        color: #55aaff;
+        text-shadow: 0 0 5px #55aaff;
+      }
+      .rarity-Legendary {
+        color: #ffd700;
+        text-shadow: 0 0 8px #ffd700;
+      }
+      .rarity-Unique {
+        background: linear-gradient(
+          90deg,
+          #ff0000,
+          #ff7f00,
+          #ffff00,
+          #00ff00,
+          #0000ff,
+          #4b0082,
+          #9400d3
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: rainbow-text 3s linear infinite;
+      }
+      @keyframes rainbow-text {
+        0% {
+          background-position: 0% 50%;
+        }
+        100% {
+          background-position: 100% 50%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="crt-overlay"></div>
+    <div id="asset-cache"></div>
+
+    <!-- NEW: Main Menu Screen -->
+    <div id="main-menu-screen" class="game-screen">
+      <h1>Super Invader</h1>
+      <button id="startButton" class="menu-button" disabled>Loading...</button>
+    </div>
+
+    <!-- NEW: Ship Selection Screen -->
+    <div id="ship-select-screen" class="game-screen" style="display: none">
+      <h2>Choose Your Ship</h2>
+      <div id="ship-select-container">
+        <div class="ship-card" data-ship="ship1">
+          <img src="ship1.png" alt="Vanguard" />
+          <p>Vanguard</p>
+          <p>Life: 5/5</p>
+          <p>Upgrades: 1</p>
+        </div>
+        <div class="ship-card" data-ship="ship2">
+          <img src="ship2.png" alt="Interceptor" />
+          <p>Interceptor</p>
+          <p>Life: 3/3</p>
+          <p>Upgrades: 2</p>
+        </div>
+        <div class="ship-card locked" data-ship="ship3">
+          <img src="ship3.png" alt="???" />
+          <p>???</p>
+          <p>PREMIUM</p>
+          <p>Locked</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="game-over-screen" class="game-screen" style="display: none">
+      <h1>Game Over</h1>
+      <button id="restartButton" class="menu-button">Main Menu</button>
+    </div>
+
+    <div id="discovery-panel">
+      <h2 id="discovery-name"></h2>
+      <p id="discovery-formula"></p>
+      <p id="discovery-description"></p>
+      <p id="discovery-close-prompt">Press 'E' to close</p>
+    </div>
+
+    <script>
+      // --- SETUP ---
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const assetCache = document.getElementById("asset-cache");
+
+      // UI Elements
+      const mainMenuScreen = document.getElementById("main-menu-screen");
+      const shipSelectScreen = document.getElementById("ship-select-screen");
+      const gameOverScreen = document.getElementById("game-over-screen");
+      const discoveryPanel = document.getElementById("discovery-panel");
+      const startButton = document.getElementById("startButton");
+      const restartButton = document.getElementById("restartButton");
+      const shipCards = document.querySelectorAll(".ship-card");
+
+      // --- MINERAL & ATOM DATABASE (Reduced to 10 for easier editing) ---
+      const mineralsDB = [
+        {
+          name: "Quartz",
+          formula: "SiO₂",
+          description:
+            "A hard, crystalline mineral composed of silica. It is the second most abundant mineral in Earth's continental crust.",
+          rarity: "Common",
+          score: 10,
+        },
+        {
+          name: "Iron",
+          formula: "Fe",
+          description:
+            "The most common element on Earth by mass, forming much of Earth's outer and inner core. Forged in the cores of stars through fusion.",
+          rarity: "Common",
+          score: 25,
+        },
+        {
+          name: "Gold",
+          formula: "Au",
+          description:
+            "A precious metal forged not in stars, but in the cataclysmic collision of neutron stars. It is chemically inert and a superb conductor.",
+          rarity: "Rare",
+          score: 50,
+        },
+        {
+          name: "Diamond",
+          formula: "C",
+          description:
+            "A metastable allotrope of carbon, formed under immense pressure deep within planetary mantles.",
+          rarity: "Rare",
+          score: 80,
+        },
+        {
+          name: "Iridium",
+          formula: "Ir",
+          description:
+            "A very hard, brittle, silvery-white transition metal. The K-Pg boundary is rich in Iridium, suggesting an extraterrestrial impact.",
+          rarity: "Rare",
+          score: 100,
+        },
+        {
+          name: "Tanzanite",
+          formula: "Ca₂Al₃(SiO₄)(Si₂O₇)O(OH)",
+          description:
+            "Found only in a small area of Tanzania. It exhibits strong trichroism, appearing alternately blue, violet and burgundy.",
+          rarity: "Legendary",
+          score: 225,
+        },
+        {
+          name: "Painite",
+          formula: "CaZrAl₉O₁₅(BO₃)",
+          description:
+            "Once held the Guinness World Record for the rarest gemstone. It was unknown to science until 1957.",
+          rarity: "Legendary",
+          score: 250,
+        },
+        {
+          name: "Jarosite",
+          formula: "KFe₃(SO₄)₂(OH)₆",
+          description:
+            "A hydrous sulfate mineral formed in ore deposits by oxidation. Its discovery on Mars provided strong evidence of past water activity.",
+          rarity: "Unique",
+          score: 1000,
+        },
+        {
+          name: "Helium-3",
+          formula: "³He",
+          description:
+            "A light, non-radioactive isotope of helium, rare on Earth but thought to be abundant on the Moon, deposited by solar winds.",
+          rarity: "Unique",
+          score: 1500,
+        },
+        {
+          name: "Oganesson",
+          formula: "Og",
+          description:
+            "A synthetic chemical element, atomic number 118. It is the heaviest element ever created and has an extremely short half-life.",
+          rarity: "Unique",
+          score: 5000,
+        },
+      ];
+
+      // --- ASSET LOADING ---
+      const shipImages = {
+        ship1: new Image(),
+        ship2: new Image(),
+        ship3: new Image(),
+      };
+      const asteroidImages = [];
+      const planetSpriteSheets = [];
+      const PLANET_FRAME_COUNT = 24;
+      const planetSpriteSheetSources = [
+        "Planet_Sprite_Sheets/1.png",
+        "Planet_Sprite_Sheets/2.png",
+        "Planet_Sprite_Sheets/3.png",
+        "Planet_Sprite_Sheets/4.png",
+        "Planet_Sprite_Sheets/5.png",
+        "Planet_Sprite_Sheets/6.png",
+        "Planet_Sprite_Sheets/7.png",
+        "Planet_Sprite_Sheets/8.png",
+      ];
+      const asteroidImageSources = [
+        "Asteroids/1.png",
+        "Asteroids/2.png",
+        "Asteroids/3.png",
+        "Asteroids/4.png",
+        "Asteroids/5.png",
+        "Asteroids/6.png",
+        "Asteroids/7.png",
+        "Asteroids/8.png",
+        "Asteroids/9.png",
+        "Asteroids/10.png",
+        "Asteroids/11.png",
+        "Asteroids/12.png",
+        "Asteroids/13.png",
+        "Asteroids/14.png",
+        "Asteroids/15.png",
+      ];
+      const radarAudio = new Audio("Radar.mp3");
+      let assetsToLoad =
+        planetSpriteSheetSources.length +
+        asteroidImageSources.length +
+        Object.keys(shipImages).length;
+      let assetsLoaded = 0;
+
+      function assetLoaded() {
+        assetsLoaded++;
+        if (assetsLoaded === assetsToLoad) {
+          startButton.disabled = false;
+          startButton.textContent = "Start";
+        }
+      }
+
+      // --- GAME STATE ---
+      let gameState = "menu"; // menu, shipSelect, playing, gameOver
+      let score = 0;
+      let nearestPlanetInfo = {
+        name: "",
+        distance: Infinity,
+        discovered: false,
+      };
+      let isRadarPlaying = false;
+      let isPanelOpen = false;
+      let animationFrameId;
+
+      // --- PLAYER (SHIP) & REPULSION FIELD ---
+      const player = {
+        x: 0,
+        y: 0,
+        radius: 15,
+        angle: 0,
+        rotationSpeed: 0.1,
+        speed: 0,
+        acceleration: 0.1,
+        turboAcceleration: 0.5,
+        friction: 0.98,
+        image: null,
+      };
+      const REPULSION_RANGE = 150;
+      const REPULSION_STRENGTH = 0.5;
+
+      // --- CAMERA ---
+      const camera = { x: player.x, y: player.y };
+
+      // --- STARS ---
+      let stars = [];
+      const starLayers = [
+        { speed: 0.2, radius: 0.5, countMultiplier: 0.5 },
+        { speed: 0.4, radius: 1.0, countMultiplier: 0.35 },
+        { speed: 0.6, radius: 1.2, countMultiplier: 0.15 },
+      ];
+
+      // --- INFINITE PROCEDURAL GENERATION ---
+      let planets = [];
+      let asteroids = [];
+      const SECTOR_SIZE = 5000;
+      let generatedSectors = new Set();
+
+      function mulberry32(a) {
+        return function () {
+          var t = (a += 0x6d2b79f5);
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      function generateEntitiesForSector(sectorX, sectorY) {
+        const sectorKey = `${sectorX},${sectorY}`;
+        if (generatedSectors.has(sectorKey)) return;
+        generatedSectors.add(sectorKey);
+
+        const seed = sectorX * 18397 + sectorY * 23117;
+        const rng = mulberry32(seed);
+
+        if (rng() < 0.25) {
+          const pScale = 3.0;
+          const pSheet =
+            planetSpriteSheets[Math.floor(rng() * planetSpriteSheets.length)];
+          const frameWidth = pSheet.width / PLANET_FRAME_COUNT;
+          const w = frameWidth * pScale,
+            h = pSheet.height * pScale;
+
+          const mineralIndex = Math.floor(rng() * mineralsDB.length);
+          const mineral = mineralsDB[mineralIndex];
+
+          planets.push({
+            x: sectorX * SECTOR_SIZE + rng() * SECTOR_SIZE,
+            y: sectorY * SECTOR_SIZE + rng() * SECTOR_SIZE,
+            radius: w / 2,
+            sheet: pSheet,
+            discovered: false,
+            width: w,
+            height: h,
+            frameCount: PLANET_FRAME_COUNT,
+            frameWidth: frameWidth,
+            currentFrame: 0,
+            animationTimer: 0,
+            animationSpeed: 20 + rng() * 15,
+            mineral: mineral,
+          });
+        }
+
+        if (rng() < 0.4) {
+          const numAsteroids = Math.floor(rng() * 25) + 10;
+          for (let i = 0; i < numAsteroids; i++) {
+            const aImg =
+              asteroidImages[Math.floor(rng() * asteroidImages.length)];
+            asteroids.push({
+              x: sectorX * SECTOR_SIZE + rng() * SECTOR_SIZE,
+              y: sectorY * SECTOR_SIZE + rng() * SECTOR_SIZE,
+              image: aImg,
+              radius: aImg.width / 2,
+              angle: rng() * Math.PI * 2,
+              rotationSpeed: (rng() - 0.5) * 0.02,
+              speedX: (rng() - 0.5) * 2,
+              speedY: (rng() - 0.5) * 2,
+            });
+          }
+        }
+      }
+
+      // --- INPUT & EVENT LISTENERS ---
+      const keys = {
+        ArrowUp: false,
+        ArrowLeft: false,
+        ArrowRight: false,
+        Shift: false,
+        " ": false,
+        e: false,
+      };
+      window.addEventListener("keydown", (e) => {
+        if (keys.hasOwnProperty(e.key)) {
+          e.preventDefault();
+          keys[e.key] = true;
+        }
+        if (e.key === "e" || e.key === "E") {
+          toggleDiscoveryPanel(false);
+        }
+      });
+      window.addEventListener("keyup", (e) => {
+        if (keys.hasOwnProperty(e.key)) {
+          keys[e.key] = false;
+        }
+      });
+
+      startButton.addEventListener("click", () => {
+        mainMenuScreen.style.display = "none";
+        shipSelectScreen.style.display = "flex";
+        gameState = "shipSelect";
+      });
+
+      restartButton.addEventListener("click", () => {
+        gameOverScreen.style.display = "none";
+        mainMenuScreen.style.display = "flex";
+        gameState = "menu";
+      });
+
+      shipCards.forEach((card) => {
+        if (card.classList.contains("locked")) return;
+        card.addEventListener("click", () => {
+          const shipId = card.getAttribute("data-ship");
+          startGame(shipId);
+        });
+      });
+
+      function startGame(shipId) {
+        // Initialize game based on ship choice
+        player.image = shipImages[shipId];
+        // You can add more ship-specific stats here later
+        // e.g. player.maxHealth = shipStats[shipId].health;
+
+        shipSelectScreen.style.display = "none";
+        canvas.style.display = "block";
+
+        resetGameData();
+        gameState = "playing";
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        gameLoop();
+      }
+
+      function resetGameData() {
+        player.x = 0;
+        player.y = 0;
+        player.speed = 0;
+        player.angle = 0;
+        camera.x = 0;
+        camera.y = 0;
+        planets = [];
+        asteroids = [];
+        generatedSectors.clear();
+        score = 0;
+        toggleDiscoveryPanel(false);
+      }
+
+      // --- UI FUNCTIONS ---
+      function toggleDiscoveryPanel(show, mineral = null) {
+        if (show && mineral) {
+          isPanelOpen = true;
+          document.getElementById(
+            "discovery-name"
+          ).textContent = `[${mineral.rarity}] ${mineral.name}`;
+          document.getElementById(
+            "discovery-name"
+          ).className = `rarity-${mineral.rarity}`;
+          document.getElementById(
+            "discovery-formula"
+          ).textContent = `Formula: ${mineral.formula}`;
+          document.getElementById("discovery-description").textContent =
+            mineral.description;
+          discoveryPanel.style.display = "block";
+        } else {
+          isPanelOpen = false;
+          discoveryPanel.style.display = "none";
+        }
+      }
+
+      // --- RESIZE AND GENERATION LOGIC ---
+      function generateStars() {
+        stars = [];
+        const base = (canvas.width * canvas.height) / 3000;
+        starLayers.forEach((l) => {
+          for (let i = 0; i < Math.floor(base * l.countMultiplier); i++)
+            stars.push({
+              x: Math.random() * canvas.width,
+              y: Math.random() * canvas.height,
+              radius: l.radius,
+              speed: l.speed,
+            });
+        });
+      }
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        generateStars();
+      }
+      window.addEventListener("resize", resizeCanvas);
+
+      // --- GAME LOOP ---
+      function gameLoop() {
+        // 1. UPDATE STATE
+        if (gameState === "playing" && !isPanelOpen) {
+          const accel = keys.Shift
+            ? player.turboAcceleration
+            : player.acceleration;
+          if (keys.ArrowLeft) player.angle -= player.rotationSpeed;
+          if (keys.ArrowRight) player.angle += player.rotationSpeed;
+          if (keys.ArrowUp) player.speed += accel;
+          if (keys[" "]) player.speed *= 0.92;
+          player.speed *= player.friction;
+          player.x += player.speed * Math.cos(player.angle);
+          player.y += player.speed * Math.sin(player.angle);
+        }
+        if (gameState === "playing") {
+          camera.x = player.x;
+          camera.y = player.y;
+
+          const sX = Math.floor(player.x / SECTOR_SIZE),
+            sY = Math.floor(player.y / SECTOR_SIZE);
+          for (let y = -1; y <= 1; y++) {
+            for (let x = -1; x <= 1; x++)
+              generateEntitiesForSector(sX + x, sY + y);
+          }
+
+          asteroids.forEach((a) => {
+            a.x += a.speedX;
+            a.y += a.speedY;
+            a.angle += a.rotationSpeed;
+
+            const dx = a.x - player.x;
+            const dy = a.y - player.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < REPULSION_RANGE) {
+              const forceAngle = Math.atan2(dy, dx);
+              const forceMagnitude =
+                REPULSION_STRENGTH * (1 - dist / REPULSION_RANGE);
+              a.speedX += Math.cos(forceAngle) * forceMagnitude;
+              a.speedY += Math.sin(forceAngle) * forceMagnitude;
+            }
+          });
+
+          planets.forEach((p) => {
+            p.animationTimer++;
+            if (p.animationTimer > p.animationSpeed) {
+              p.animationTimer = 0;
+              p.currentFrame = (p.currentFrame + 1) % p.frameCount;
+            }
+          });
+        }
+
+        // 2. DRAW EVERYTHING
+        ctx.save();
+        if (gameState === "playing" && keys.Shift && player.speed > 5) {
+          const shake = player.speed * 0.2;
+          ctx.translate(
+            (Math.random() - 0.5) * shake,
+            (Math.random() - 0.5) * shake
+          );
+        }
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        stars.forEach((s) => {
+          const pX =
+            (((s.x - camera.x * s.speed) % canvas.width) + canvas.width) %
+            canvas.width;
+          const pY =
+            (((s.y - camera.y * s.speed) % canvas.height) + canvas.height) %
+            canvas.height;
+          if (keys.Shift && player.speed > 2) {
+            const len = player.speed * s.speed * 0.6,
+              sX = pX - Math.cos(player.angle) * len,
+              sY = pY - Math.sin(player.angle) * len;
+            ctx.beginPath();
+            ctx.moveTo(sX, sY);
+            ctx.lineTo(pX, pY);
+            ctx.strokeStyle = "#FFF";
+            ctx.lineWidth = s.radius * 2;
+            ctx.stroke();
+          } else {
+            ctx.beginPath();
+            ctx.arc(pX, pY, s.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#FFF";
+            ctx.fill();
+          }
+        });
+
+        let minDistance = Infinity;
+        let currentNearestPlanet = null;
+        planets.forEach((p) => {
+          const psX = p.x - camera.x + canvas.width / 2,
+            psY = p.y - camera.y + canvas.height / 2;
+          if (
+            psX + p.radius > 0 &&
+            psX - p.radius < canvas.width &&
+            psY + p.radius > 0 &&
+            psY - p.radius < canvas.height
+          ) {
+            const sourceX = p.currentFrame * p.frameWidth;
+            ctx.drawImage(
+              p.sheet,
+              sourceX,
+              0,
+              p.frameWidth,
+              p.sheet.height,
+              psX - p.radius,
+              psY - p.radius,
+              p.width,
+              p.height
+            );
+          }
+          if (gameState === "playing") {
+            const dx = player.x - p.x,
+              dy = player.y - p.y,
+              dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minDistance) {
+              minDistance = dist;
+              currentNearestPlanet = p;
+            }
+            if (dist < p.radius + 100 && !p.discovered) {
+              p.discovered = true;
+              score += p.mineral.score;
+              toggleDiscoveryPanel(true, p.mineral);
+            }
+          }
+        });
+        asteroids.forEach((a) => {
+          const asX = a.x - camera.x + canvas.width / 2,
+            asY = a.y - camera.y + canvas.height / 2;
+          if (
+            asX + a.radius > 0 &&
+            asX - a.radius < canvas.width &&
+            asY + a.radius > 0 &&
+            asY - a.radius < canvas.height
+          ) {
+            ctx.save();
+            ctx.translate(asX, asY);
+            ctx.rotate(a.angle);
+            ctx.drawImage(
+              a.image,
+              -a.radius,
+              -a.radius,
+              a.radius * 2,
+              a.radius * 2
+            );
+            ctx.restore();
+          }
+        });
+
+        if (currentNearestPlanet) {
+          nearestPlanetInfo = {
+            name: currentNearestPlanet.discovered
+              ? currentNearestPlanet.mineral.name
+              : "Unknown Planet",
+            distance: minDistance,
+            discovered: currentNearestPlanet.discovered,
+          };
+        }
+
+        const RADAR_RANGE = 2000;
+        if (
+          gameState === "playing" &&
+          !isPanelOpen &&
+          currentNearestPlanet &&
+          !currentNearestPlanet.discovered &&
+          minDistance < RADAR_RANGE
+        ) {
+          if (!isRadarPlaying) {
+            radarAudio.loop = true;
+            radarAudio
+              .play()
+              .catch((e) => console.warn("Audio policy warning"));
+            isRadarPlaying = true;
+          }
+        } else {
+          if (isRadarPlaying) {
+            radarAudio.pause();
+            radarAudio.currentTime = 0;
+            isRadarPlaying = false;
+          }
+        }
+
+        if (gameState === "playing" && player.image) {
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate(player.angle + Math.PI / 2);
+          ctx.drawImage(
+            player.image,
+            -player.image.width / 2,
+            -player.image.height / 2
+          );
+          ctx.restore();
+        }
+
+        if (gameState === "playing") {
+          ctx.font = '20px "Press Start 2P"';
+          ctx.fillStyle = "white";
+          ctx.textAlign = "left";
+          ctx.fillText(`Score: ${score}`, 10, 30);
+          if (nearestPlanetInfo.name) {
+            ctx.fillStyle = nearestPlanetInfo.discovered
+              ? "lightgreen"
+              : "white";
+            ctx.fillText(
+              `${nearestPlanetInfo.name} - ${Math.round(
+                nearestPlanetInfo.distance
+              )}`,
+              10,
+              60
+            );
+          }
+        }
+
+        ctx.restore();
+        animationFrameId = requestAnimationFrame(gameLoop);
+      }
+
+      // --- START THE GAME (Asset Loading) ---
+      function loadAllAssets() {
+        resizeCanvas();
+
+        shipImages.ship1.onload = assetLoaded;
+        shipImages.ship1.src = "ship1.png";
+        shipImages.ship2.onload = assetLoaded;
+        shipImages.ship2.src = "ship2.png";
+        shipImages.ship3.onload = assetLoaded;
+        shipImages.ship3.src = "ship3.png";
+
+        assetCache.appendChild(shipImages.ship1);
+        assetCache.appendChild(shipImages.ship2);
+        assetCache.appendChild(shipImages.ship3);
+
+        asteroidImageSources.forEach((src) => {
+          const i = new Image();
+          i.onload = assetLoaded;
+          i.src = src;
+          asteroidImages.push(i);
+          assetCache.appendChild(i);
+        });
+        planetSpriteSheetSources.forEach((src) => {
+          const i = new Image();
+          i.onload = assetLoaded;
+          i.src = src;
+          planetSpriteSheets.push(i);
+          assetCache.appendChild(i);
+        });
+      }
+
+      loadAllAssets();
+    </script>
+  </body>
+</html>
