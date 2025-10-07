@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
     <title>Super Invader</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -99,7 +102,7 @@
         width: 100%;
         height: 100%;
         background-color: #000;
-        background-image: url("https://cdn.wallpapersafari.com/89/68/v8ZRoa.png");
+        background-image: url("https://i.imgur.com/sSU4s5b.png");
         background-size: auto;
         animation: scroll-background 60s linear infinite;
         z-index: 20;
@@ -111,7 +114,7 @@
       }
 
       .game-screen h1 {
-        font-size: 4em;
+        font-size: 3em; /* Adjusted for mobile */
         text-shadow: 4px 4px #00ffff;
         margin-bottom: 50px;
       }
@@ -140,7 +143,9 @@
 
       #ship-select-container {
         display: flex;
-        gap: 40px;
+        gap: 20px;
+        flex-wrap: wrap; /* Allow wrapping on small screens */
+        justify-content: center;
       }
 
       .ship-card {
@@ -156,8 +161,8 @@
         transform: scale(1.05);
       }
       .ship-card img {
-        width: 128px;
-        height: 128px;
+        width: 96px; /* Adjusted for mobile */
+        height: 96px;
         image-rendering: pixelated;
       }
       .ship-card p {
@@ -180,9 +185,9 @@
         bottom: 20px;
         left: 50%;
         transform: translateX(-50%);
-        width: 80%;
+        width: 90%;
         max-width: 800px;
-        padding: 20px;
+        padding: 15px;
         background: rgba(10, 20, 40, 0.85);
         border: 2px solid #00ffff;
         color: #fff;
@@ -192,16 +197,16 @@
       }
       #discovery-panel h2 {
         margin-top: 0;
-        font-size: 1.5em;
+        font-size: 1.2em;
       }
       #discovery-panel p {
-        margin: 10px 0;
-        font-size: 0.9em;
+        margin: 8px 0;
+        font-size: 0.8em;
         line-height: 1.4;
       }
       #discovery-close-prompt {
-        margin-top: 15px;
-        font-size: 0.8em;
+        margin-top: 10px;
+        font-size: 0.7em;
         color: #aaa;
       }
       .rarity-Common {
@@ -240,14 +245,13 @@
         }
       }
 
-      /* NEW: Pirate UI */
       #pirate-warning {
         display: none;
         position: absolute;
         top: 20px;
         left: 50%;
         transform: translateX(-50%);
-        font-size: 2.5em;
+        font-size: 2em;
         color: #ff0000;
         text-shadow: 3px 3px #000;
         z-index: 16;
@@ -271,8 +275,8 @@
         top: 80px;
         left: 50%;
         transform: translateX(-50%);
-        width: 400px;
-        height: 30px;
+        width: 300px;
+        height: 20px;
         border: 2px solid #ff0000;
         background: #330000;
         z-index: 16;
@@ -281,6 +285,67 @@
         width: 0%;
         height: 100%;
         background: #ff0000;
+      }
+
+      /* NEW: Touch Controls */
+      #touch-controls {
+        display: none; /* Hidden by default, enabled by JS */
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 12;
+        pointer-events: none; /* Pass clicks through */
+      }
+      .touch-button {
+        position: absolute;
+        bottom: 30px;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        pointer-events: auto; /* Buttons are clickable */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 12px;
+        user-select: none;
+      }
+      .touch-button.active {
+        background: rgba(255, 255, 255, 0.5);
+      }
+      #joystick-base {
+        position: absolute;
+        left: 40px;
+        bottom: 40px;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        pointer-events: auto;
+      }
+      #joystick-knob {
+        position: absolute;
+        left: 30px;
+        top: 30px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.4);
+      }
+      #thrust-button {
+        right: 100px;
+        bottom: 90px;
+      }
+      #turbo-button {
+        right: 30px;
+        bottom: 130px;
+      }
+      #brake-button {
+        right: 30px;
+        bottom: 40px;
       }
     </style>
   </head>
@@ -327,11 +392,21 @@
       <h2 id="discovery-name"></h2>
       <p id="discovery-formula"></p>
       <p id="discovery-description"></p>
-      <p id="discovery-close-prompt">Press 'E' to close</p>
+      <p id="discovery-close-prompt">Tap or Press 'E' to close</p>
     </div>
     <div id="pirate-warning">INVASION!</div>
     <div id="steal-progress-bar-container">
       <div id="steal-progress-bar"></div>
+    </div>
+
+    <!-- NEW: Touch Controls UI -->
+    <div id="touch-controls">
+      <div id="joystick-base">
+        <div id="joystick-knob"></div>
+      </div>
+      <div id="thrust-button" class="touch-button">THRUST</div>
+      <div id="turbo-button" class="touch-button">TURBO</div>
+      <div id="brake-button" class="touch-button">BRAKE</div>
     </div>
 
     <script>
@@ -353,6 +428,7 @@
         "steal-progress-bar-container"
       );
       const stealBar = document.getElementById("steal-progress-bar");
+      const touchControls = document.getElementById("touch-controls");
 
       // --- MINERAL & ATOM DATABASE ---
       const mineralsDB = [
@@ -474,12 +550,16 @@
         "Asteroids/14.png",
         "Asteroids/15.png",
       ];
+
       const radarAudio = new Audio("Radar.mp3");
+      const loopAudio = new Audio("loop.mp3");
+      const alarmAudio = new Audio("alarm.mp3");
+
       let assetsToLoad =
         planetSpriteSheetSources.length +
         asteroidImageSources.length +
         Object.keys(shipImages).length +
-        1; // +1 for pirate
+        1;
       let assetsLoaded = 0;
 
       function assetLoaded() {
@@ -501,8 +581,8 @@
       let isRadarPlaying = false;
       let isPanelOpen = false;
       let animationFrameId;
-      let pendingInvasionRarity = null; // NEW: To delay invasion
-      let stealProgress = 0; // NEW: Shared steal progress
+      let pendingInvasionRarity = null;
+      let stealProgress = 0;
 
       // --- PLAYER & PIRATE ---
       const player = {
@@ -522,9 +602,13 @@
       const REPULSION_RANGE = 150;
       const REPULSION_STRENGTH = 0.5;
 
-      let pirates = []; // UPDATED: Now an array
+      let pirates = [];
       const PIRATE_STEAL_RANGE = 300;
-      const PIRATE_INVASION_DURATION = 20 * 60; // UPDATED: 20 seconds
+      const PIRATE_INVASION_DURATION = 20 * 60;
+      const PIRATE_BASE_MAX_SPEED = 7.0;
+      const PIRATE_BASE_ACCELERATION = 0.1;
+      const PIRATE_TURBO_MAX_SPEED = 9.5;
+      const PIRATE_TURBO_ACCELERATION = 0.15;
 
       // --- CAMERA & GENERATION ---
       const camera = { x: player.x, y: player.y };
@@ -609,13 +693,12 @@
           y: player.y + Math.sin(spawnAngle) * spawnDist,
           radius: 20,
           angle: 0,
-          rotationSpeed: 0.05,
+          rotationSpeed: 0.07,
           speed: 0,
-          maxSpeed: 7.0,
-          acceleration: 0.1,
           state: "chasing",
           timer: PIRATE_INVASION_DURATION,
         });
+        alarmAudio.play().catch((e) => console.warn("Alarm could not play"));
         pirateWarning.style.display = "block";
       }
 
@@ -633,7 +716,7 @@
               pirate.state = "escaping";
             }
 
-            const predictionTime = 30;
+            const predictionTime = 30 + player.speed * 2;
             const predictedPlayerX = player.x + player.velX * predictionTime;
             const predictedPlayerY = player.y + player.velY * predictionTime;
 
@@ -647,9 +730,15 @@
             pirate.angle += angleDiff * pirate.rotationSpeed;
             pirate.angle %= Math.PI * 2;
 
+            const targetMaxSpeed = keys.Shift
+              ? PIRATE_TURBO_MAX_SPEED
+              : PIRATE_BASE_MAX_SPEED;
+            const targetAcceleration = keys.Shift
+              ? PIRATE_TURBO_ACCELERATION
+              : PIRATE_BASE_ACCELERATION;
             pirate.speed = Math.min(
-              pirate.maxSpeed,
-              pirate.speed + pirate.acceleration
+              targetMaxSpeed,
+              pirate.speed + targetAcceleration
             );
 
             const stealDist = Math.sqrt(
@@ -660,9 +749,9 @@
               isPlayerBeingStolenFrom = true;
             }
           } else if (pirate.state === "escaping") {
-            pirate.speed += pirate.acceleration;
+            pirate.speed += PIRATE_BASE_ACCELERATION;
             if (pirate.timer < -300) {
-              pirates.splice(i, 1); // Remove pirate from array
+              pirates.splice(i, 1);
             }
           }
 
@@ -671,7 +760,7 @@
         }
 
         if (isPlayerBeingStolenFrom) {
-          stealProgress = Math.min(100, stealProgress + 0.5); // UPDATED: Faster charge
+          stealProgress = Math.min(100, stealProgress + 0.5);
           stealBarContainer.style.display = "block";
           stealBar.style.width = `${stealProgress}%`;
         } else {
@@ -703,6 +792,8 @@
         " ": false,
         e: false,
       };
+
+      // Keyboard
       window.addEventListener("keydown", (e) => {
         if (keys.hasOwnProperty(e.key)) {
           e.preventDefault();
@@ -718,7 +809,16 @@
         }
       });
 
+      // UI Buttons
       startButton.addEventListener("click", () => {
+        // Unlock audio context on user interaction
+        loopAudio.play().catch(() => {});
+        loopAudio.pause();
+        alarmAudio.play().catch(() => {});
+        alarmAudio.pause();
+        radarAudio.play().catch(() => {});
+        radarAudio.pause();
+
         mainMenuScreen.style.display = "none";
         shipSelectScreen.style.display = "flex";
         gameState = "shipSelect";
@@ -727,6 +827,8 @@
         gameOverScreen.style.display = "none";
         mainMenuScreen.style.display = "flex";
         gameState = "menu";
+        loopAudio.pause();
+        loopAudio.currentTime = 0;
       });
 
       shipCards.forEach((card) => {
@@ -737,13 +839,26 @@
         });
       });
 
+      // Tap to close discovery panel
+      discoveryPanel.addEventListener("click", () =>
+        toggleDiscoveryPanel(false)
+      );
+
       function startGame(shipId) {
         player.image = shipImages[shipId];
         shipSelectScreen.style.display = "none";
         canvas.style.display = "block";
+
         resetGameData();
         gameState = "playing";
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+        loopAudio.loop = true;
+        loopAudio.volume = 0.4;
+        loopAudio
+          .play()
+          .catch((e) => console.warn("Background audio auto-play failed."));
+
         gameLoop();
       }
 
@@ -770,6 +885,7 @@
       function toggleDiscoveryPanel(show, mineral = null) {
         if (show && mineral) {
           isPanelOpen = true;
+          discoveryPanel.style.display = "block";
           document.getElementById(
             "discovery-name"
           ).textContent = `[${mineral.rarity}] ${mineral.name}`;
@@ -781,12 +897,12 @@
           ).textContent = `Formula: ${mineral.formula}`;
           document.getElementById("discovery-description").textContent =
             mineral.description;
-          discoveryPanel.style.display = "block";
         } else {
-          isPanelOpen = false;
-          discoveryPanel.style.display = "none";
-          // Trigger invasion check AFTER closing panel
-          triggerPendingInvasion();
+          if (isPanelOpen) {
+            isPanelOpen = false;
+            discoveryPanel.style.display = "none";
+            triggerPendingInvasion();
+          }
         }
       }
 
@@ -794,7 +910,7 @@
         if (!pendingInvasionRarity) return;
 
         const rarity = pendingInvasionRarity;
-        pendingInvasionRarity = null; // Consume it
+        pendingInvasionRarity = null;
         const rarityRoll = Math.random();
 
         if (rarity === "Unique") {
@@ -830,6 +946,7 @@
 
       // --- GAME LOOP ---
       function gameLoop() {
+        // ... (Game Loop logic remains the same)
         // 1. UPDATE STATE
         if (gameState === "playing" && !isPanelOpen) {
           const accel = keys.Shift
@@ -856,7 +973,7 @@
               generateEntitiesForSector(sX + x, sY + y);
           }
 
-          updatePirates(); // Update pirate logic
+          updatePirates();
 
           asteroids.forEach((a) => {
             a.x += a.speedX;
@@ -956,7 +1073,7 @@
               p.discovered = true;
               score += p.mineral.score;
               toggleDiscoveryPanel(true, p.mineral);
-              pendingInvasionRarity = p.mineral.rarity; // Set pending invasion
+              pendingInvasionRarity = p.mineral.rarity;
             }
           }
         });
@@ -983,7 +1100,6 @@
           }
         });
 
-        // Draw Pirate
         pirates.forEach((pirate) => {
           const pScreenX = pirate.x - camera.x + canvas.width / 2;
           const pScreenY = pirate.y - camera.y + canvas.height / 2;
@@ -1055,7 +1171,7 @@
         }
 
         if (gameState === "playing") {
-          ctx.font = '20px "Press Start 2P"';
+          ctx.font = '16px "Press Start 2P"';
           ctx.fillStyle = "white";
           ctx.textAlign = "left";
           ctx.fillText(`Score: ${score}`, 10, 30);
@@ -1077,17 +1193,110 @@
         animationFrameId = requestAnimationFrame(gameLoop);
       }
 
+      // --- TOUCH CONTROLS SETUP ---
+      function setupTouchControls() {
+        const isTouch =
+          "ontouchstart" in window || navigator.maxTouchPoints > 0;
+        if (!isTouch) return;
+
+        touchControls.style.display = "block";
+
+        const joystickBase = document.getElementById("joystick-base");
+        const joystickKnob = document.getElementById("joystick-knob");
+        const thrustButton = document.getElementById("thrust-button");
+        const turboButton = document.getElementById("turbo-button");
+        const brakeButton = document.getElementById("brake-button");
+
+        let joyStickActive = false;
+        let joyStickId = null;
+
+        joystickBase.addEventListener(
+          "touchstart",
+          (e) => {
+            e.preventDefault();
+            if (joyStickActive) return;
+            joyStickActive = true;
+            joyStickId = e.changedTouches[0].identifier;
+          },
+          { passive: false }
+        );
+
+        window.addEventListener(
+          "touchmove",
+          (e) => {
+            if (!joyStickActive) return;
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+              if (touch.identifier === joyStickId) {
+                const rect = joystickBase.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const dx = touch.clientX - centerX;
+
+                const threshold = rect.width * 0.2;
+                if (dx < -threshold) {
+                  keys.ArrowLeft = true;
+                  keys.ArrowRight = false;
+                } else if (dx > threshold) {
+                  keys.ArrowLeft = false;
+                  keys.ArrowRight = true;
+                } else {
+                  keys.ArrowLeft = false;
+                  keys.ArrowRight = false;
+                }
+
+                const clampedX = Math.max(
+                  -rect.width / 2,
+                  Math.min(rect.width / 2, dx)
+                );
+                joystickKnob.style.transform = `translateX(${clampedX}px)`;
+              }
+            }
+          },
+          { passive: false }
+        );
+
+        window.addEventListener("touchend", (e) => {
+          for (let touch of e.changedTouches) {
+            if (touch.identifier === joyStickId) {
+              joyStickActive = false;
+              joyStickId = null;
+              keys.ArrowLeft = false;
+              keys.ArrowRight = false;
+              joystickKnob.style.transform = `translateX(0px)`;
+            }
+          }
+        });
+
+        const setupButton = (element, key) => {
+          element.addEventListener(
+            "touchstart",
+            (e) => {
+              e.preventDefault();
+              keys[key] = true;
+              element.classList.add("active");
+            },
+            { passive: false }
+          );
+          element.addEventListener("touchend", (e) => {
+            e.preventDefault();
+            keys[key] = false;
+            element.classList.remove("active");
+          });
+        };
+
+        setupButton(thrustButton, "ArrowUp");
+        setupButton(turboButton, "Shift");
+        setupButton(brakeButton, " ");
+      }
+
       // --- START THE GAME (Asset Loading) ---
       function loadAllAssets() {
         resizeCanvas();
 
-        // UPDATED: Added error handling
         const setupImageLoader = (img, src) => {
           img.onload = assetLoaded;
           img.onerror = () => {
             console.error(`Failed to load asset: ${src}`);
-            // You could optionally call assetLoaded() here to prevent the game from getting stuck,
-            // but it's better to see the error and fix the path.
           };
           img.src = src;
           assetCache.appendChild(img);
@@ -1109,6 +1318,8 @@
           planetSpriteSheets.push(i);
           setupImageLoader(i, src);
         });
+
+        setupTouchControls(); // Initialize touch controls
       }
 
       loadAllAssets();
