@@ -83,7 +83,6 @@
         }
       }
 
-      /* NEW: Animated background for menus */
       @keyframes scroll-background {
         from {
           background-position: 0 0;
@@ -99,10 +98,9 @@
         left: 0;
         width: 100%;
         height: 100%;
-        /* UPDATED: Animated nebula background */
         background-color: #000;
-        background-image: url("https://i.imgur.com/VUSHFrn.jpeg");
-        background-size: auto; /* Let it tile */
+        background-image: url("https://cdn.wallpapersafari.com/63/68/f1g5Ap.png");
+        background-size: auto;
         animation: scroll-background 60s linear infinite;
         z-index: 20;
         display: flex;
@@ -150,7 +148,7 @@
         padding: 20px;
         cursor: pointer;
         transition: all 0.2s ease-in-out;
-        background: rgba(0, 0, 0, 0.5); /* Add a slight background to cards */
+        background: rgba(0, 0, 0, 0.5);
       }
       .ship-card:hover {
         border-color: #00ffff;
@@ -241,6 +239,49 @@
           background-position: 100% 50%;
         }
       }
+
+      /* NEW: Pirate UI */
+      #pirate-warning {
+        display: none;
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 2.5em;
+        color: #ff0000;
+        text-shadow: 3px 3px #000;
+        z-index: 16;
+        animation: pulse-warning 1s infinite;
+      }
+      @keyframes pulse-warning {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      #steal-progress-bar-container {
+        display: none;
+        position: absolute;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 400px;
+        height: 30px;
+        border: 2px solid #ff0000;
+        background: #330000;
+        z-index: 16;
+      }
+      #steal-progress-bar {
+        width: 0%;
+        height: 100%;
+        background: #ff0000;
+      }
     </style>
   </head>
   <body>
@@ -248,13 +289,11 @@
     <div id="crt-overlay"></div>
     <div id="asset-cache"></div>
 
-    <!-- NEW: Main Menu Screen -->
+    <!-- Menu Screens -->
     <div id="main-menu-screen" class="game-screen">
       <h1>Super Invader</h1>
       <button id="startButton" class="menu-button" disabled>Loading...</button>
     </div>
-
-    <!-- NEW: Ship Selection Screen -->
     <div id="ship-select-screen" class="game-screen" style="display: none">
       <h2>Choose Your Ship</h2>
       <div id="ship-select-container">
@@ -278,17 +317,21 @@
         </div>
       </div>
     </div>
-
     <div id="game-over-screen" class="game-screen" style="display: none">
       <h1>Game Over</h1>
       <button id="restartButton" class="menu-button">Main Menu</button>
     </div>
 
+    <!-- In-Game UI -->
     <div id="discovery-panel">
       <h2 id="discovery-name"></h2>
       <p id="discovery-formula"></p>
       <p id="discovery-description"></p>
       <p id="discovery-close-prompt">Press 'E' to close</p>
+    </div>
+    <div id="pirate-warning">INVASION!</div>
+    <div id="steal-progress-bar-container">
+      <div id="steal-progress-bar"></div>
     </div>
 
     <script>
@@ -305,14 +348,18 @@
       const startButton = document.getElementById("startButton");
       const restartButton = document.getElementById("restartButton");
       const shipCards = document.querySelectorAll(".ship-card");
+      const pirateWarning = document.getElementById("pirate-warning");
+      const stealBarContainer = document.getElementById(
+        "steal-progress-bar-container"
+      );
+      const stealBar = document.getElementById("steal-progress-bar");
 
-      // --- MINERAL & ATOM DATABASE (Reduced to 10 for easier editing) ---
+      // --- MINERAL & ATOM DATABASE ---
       const mineralsDB = [
         {
           name: "Quartz",
           formula: "SiO₂",
-          description:
-            "A hard, crystalline mineral composed of silica. It is the second most abundant mineral in Earth's continental crust.",
+          description: "A hard, crystalline mineral composed of silica.",
           rarity: "Common",
           score: 10,
         },
@@ -320,7 +367,7 @@
           name: "Iron",
           formula: "Fe",
           description:
-            "The most common element on Earth by mass, forming much of Earth's outer and inner core. Forged in the cores of stars through fusion.",
+            "The most common element on Earth by mass, forged in the cores of stars.",
           rarity: "Common",
           score: 25,
         },
@@ -328,7 +375,7 @@
           name: "Gold",
           formula: "Au",
           description:
-            "A precious metal forged not in stars, but in the cataclysmic collision of neutron stars. It is chemically inert and a superb conductor.",
+            "A precious metal forged in the collision of neutron stars.",
           rarity: "Rare",
           score: 50,
         },
@@ -344,7 +391,7 @@
           name: "Iridium",
           formula: "Ir",
           description:
-            "A very hard, brittle, silvery-white transition metal. The K-Pg boundary is rich in Iridium, suggesting an extraterrestrial impact.",
+            "A very hard, brittle, silvery-white transition metal. Evidence of extraterrestrial impacts.",
           rarity: "Rare",
           score: 100,
         },
@@ -352,7 +399,7 @@
           name: "Tanzanite",
           formula: "Ca₂Al₃(SiO₄)(Si₂O₇)O(OH)",
           description:
-            "Found only in a small area of Tanzania. It exhibits strong trichroism, appearing alternately blue, violet and burgundy.",
+            "Exhibits strong trichroism, appearing alternately blue, violet and burgundy.",
           rarity: "Legendary",
           score: 225,
         },
@@ -360,7 +407,7 @@
           name: "Painite",
           formula: "CaZrAl₉O₁₅(BO₃)",
           description:
-            "Once held the Guinness World Record for the rarest gemstone. It was unknown to science until 1957.",
+            "Once held the Guinness World Record for the rarest gemstone.",
           rarity: "Legendary",
           score: 250,
         },
@@ -368,7 +415,7 @@
           name: "Jarosite",
           formula: "KFe₃(SO₄)₂(OH)₆",
           description:
-            "A hydrous sulfate mineral formed in ore deposits by oxidation. Its discovery on Mars provided strong evidence of past water activity.",
+            "Its discovery on Mars provided strong evidence of past water activity.",
           rarity: "Unique",
           score: 1000,
         },
@@ -376,7 +423,7 @@
           name: "Helium-3",
           formula: "³He",
           description:
-            "A light, non-radioactive isotope of helium, rare on Earth but thought to be abundant on the Moon, deposited by solar winds.",
+            "A light, non-radioactive isotope of helium, thought to be abundant on the Moon.",
           rarity: "Unique",
           score: 1500,
         },
@@ -384,7 +431,7 @@
           name: "Oganesson",
           formula: "Og",
           description:
-            "A synthetic chemical element, atomic number 118. It is the heaviest element ever created and has an extremely short half-life.",
+            "The heaviest element ever created, with an extremely short half-life.",
           rarity: "Unique",
           score: 5000,
         },
@@ -396,6 +443,7 @@
         ship2: new Image(),
         ship3: new Image(),
       };
+      const pirateImage = new Image();
       const asteroidImages = [];
       const planetSpriteSheets = [];
       const PLANET_FRAME_COUNT = 24;
@@ -430,7 +478,8 @@
       let assetsToLoad =
         planetSpriteSheetSources.length +
         asteroidImageSources.length +
-        Object.keys(shipImages).length;
+        Object.keys(shipImages).length +
+        1; // +1 for pirate
       let assetsLoaded = 0;
 
       function assetLoaded() {
@@ -442,7 +491,7 @@
       }
 
       // --- GAME STATE ---
-      let gameState = "menu"; // menu, shipSelect, playing, gameOver
+      let gameState = "menu";
       let score = 0;
       let nearestPlanetInfo = {
         name: "",
@@ -452,8 +501,10 @@
       let isRadarPlaying = false;
       let isPanelOpen = false;
       let animationFrameId;
+      let pendingInvasionRarity = null; // NEW: To delay invasion
+      let stealProgress = 0; // NEW: Shared steal progress
 
-      // --- PLAYER (SHIP) & REPULSION FIELD ---
+      // --- PLAYER & PIRATE ---
       const player = {
         x: 0,
         y: 0,
@@ -465,22 +516,24 @@
         turboAcceleration: 0.5,
         friction: 0.98,
         image: null,
+        velX: 0,
+        velY: 0,
       };
       const REPULSION_RANGE = 150;
       const REPULSION_STRENGTH = 0.5;
 
-      // --- CAMERA ---
-      const camera = { x: player.x, y: player.y };
+      let pirates = []; // UPDATED: Now an array
+      const PIRATE_STEAL_RANGE = 300;
+      const PIRATE_INVASION_DURATION = 20 * 60; // UPDATED: 20 seconds
 
-      // --- STARS ---
+      // --- CAMERA & GENERATION ---
+      const camera = { x: player.x, y: player.y };
       let stars = [];
       const starLayers = [
         { speed: 0.2, radius: 0.5, countMultiplier: 0.5 },
         { speed: 0.4, radius: 1.0, countMultiplier: 0.35 },
         { speed: 0.6, radius: 1.2, countMultiplier: 0.15 },
       ];
-
-      // --- INFINITE PROCEDURAL GENERATION ---
       let planets = [];
       let asteroids = [];
       const SECTOR_SIZE = 5000;
@@ -504,16 +557,13 @@
         const rng = mulberry32(seed);
 
         if (rng() < 0.25) {
-          const pScale = 3.0;
-          const pSheet =
-            planetSpriteSheets[Math.floor(rng() * planetSpriteSheets.length)];
-          const frameWidth = pSheet.width / PLANET_FRAME_COUNT;
-          const w = frameWidth * pScale,
-            h = pSheet.height * pScale;
-
-          const mineralIndex = Math.floor(rng() * mineralsDB.length);
-          const mineral = mineralsDB[mineralIndex];
-
+          const pScale = 3.0,
+            pSheet =
+              planetSpriteSheets[Math.floor(rng() * planetSpriteSheets.length)],
+            frameWidth = pSheet.width / PLANET_FRAME_COUNT,
+            w = frameWidth * pScale,
+            h = pSheet.height * pScale,
+            mineral = mineralsDB[Math.floor(rng() * mineralsDB.length)];
           planets.push({
             x: sectorX * SECTOR_SIZE + rng() * SECTOR_SIZE,
             y: sectorY * SECTOR_SIZE + rng() * SECTOR_SIZE,
@@ -550,6 +600,100 @@
         }
       }
 
+      // --- PIRATE MECHANICS ---
+      function spawnPirate() {
+        const spawnAngle = Math.random() * Math.PI * 2;
+        const spawnDist = Math.max(canvas.width, canvas.height);
+        pirates.push({
+          x: player.x + Math.cos(spawnAngle) * spawnDist,
+          y: player.y + Math.sin(spawnAngle) * spawnDist,
+          radius: 20,
+          angle: 0,
+          rotationSpeed: 0.05,
+          speed: 0,
+          maxSpeed: 7.0,
+          acceleration: 0.1,
+          state: "chasing",
+          timer: PIRATE_INVASION_DURATION,
+        });
+        pirateWarning.style.display = "block";
+      }
+
+      function updatePirates() {
+        if (pirates.length === 0) return;
+
+        let isPlayerBeingStolenFrom = false;
+
+        for (let i = pirates.length - 1; i >= 0; i--) {
+          const pirate = pirates[i];
+          pirate.timer--;
+
+          if (pirate.state === "chasing") {
+            if (pirate.timer <= 0) {
+              pirate.state = "escaping";
+            }
+
+            const predictionTime = 30;
+            const predictedPlayerX = player.x + player.velX * predictionTime;
+            const predictedPlayerY = player.y + player.velY * predictionTime;
+
+            const dx = predictedPlayerX - pirate.x;
+            const dy = predictedPlayerY - pirate.y;
+            const targetAngle = Math.atan2(dy, dx);
+
+            let angleDiff = targetAngle - pirate.angle;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            pirate.angle += angleDiff * pirate.rotationSpeed;
+            pirate.angle %= Math.PI * 2;
+
+            pirate.speed = Math.min(
+              pirate.maxSpeed,
+              pirate.speed + pirate.acceleration
+            );
+
+            const stealDist = Math.sqrt(
+              Math.pow(player.x - pirate.x, 2) +
+                Math.pow(player.y - pirate.y, 2)
+            );
+            if (stealDist < PIRATE_STEAL_RANGE) {
+              isPlayerBeingStolenFrom = true;
+            }
+          } else if (pirate.state === "escaping") {
+            pirate.speed += pirate.acceleration;
+            if (pirate.timer < -300) {
+              pirates.splice(i, 1); // Remove pirate from array
+            }
+          }
+
+          pirate.x += pirate.speed * Math.cos(pirate.angle);
+          pirate.y += pirate.speed * Math.sin(pirate.angle);
+        }
+
+        if (isPlayerBeingStolenFrom) {
+          stealProgress = Math.min(100, stealProgress + 0.5); // UPDATED: Faster charge
+          stealBarContainer.style.display = "block";
+          stealBar.style.width = `${stealProgress}%`;
+        } else {
+          stealProgress = Math.max(0, stealProgress - 0.1);
+          if (stealProgress > 0) {
+            stealBar.style.width = `${stealProgress}%`;
+          } else {
+            stealBarContainer.style.display = "none";
+          }
+        }
+
+        if (stealProgress >= 100) {
+          score = 0;
+          pirates.forEach((p) => (p.state = "escaping"));
+        }
+
+        if (pirates.length === 0) {
+          pirateWarning.style.display = "none";
+          stealBarContainer.style.display = "none";
+        }
+      }
+
       // --- INPUT & EVENT LISTENERS ---
       const keys = {
         ArrowUp: false,
@@ -579,7 +723,6 @@
         shipSelectScreen.style.display = "flex";
         gameState = "shipSelect";
       });
-
       restartButton.addEventListener("click", () => {
         gameOverScreen.style.display = "none";
         mainMenuScreen.style.display = "flex";
@@ -595,14 +738,9 @@
       });
 
       function startGame(shipId) {
-        // Initialize game based on ship choice
         player.image = shipImages[shipId];
-        // You can add more ship-specific stats here later
-        // e.g. player.maxHealth = shipStats[shipId].health;
-
         shipSelectScreen.style.display = "none";
         canvas.style.display = "block";
-
         resetGameData();
         gameState = "playing";
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
@@ -614,16 +752,21 @@
         player.y = 0;
         player.speed = 0;
         player.angle = 0;
+        player.velX = 0;
+        player.velY = 0;
         camera.x = 0;
         camera.y = 0;
         planets = [];
         asteroids = [];
         generatedSectors.clear();
         score = 0;
+        pirates = [];
+        stealProgress = 0;
+        pirateWarning.style.display = "none";
+        stealBarContainer.style.display = "none";
         toggleDiscoveryPanel(false);
       }
 
-      // --- UI FUNCTIONS ---
       function toggleDiscoveryPanel(show, mineral = null) {
         if (show && mineral) {
           isPanelOpen = true;
@@ -642,10 +785,29 @@
         } else {
           isPanelOpen = false;
           discoveryPanel.style.display = "none";
+          // Trigger invasion check AFTER closing panel
+          triggerPendingInvasion();
         }
       }
 
-      // --- RESIZE AND GENERATION LOGIC ---
+      function triggerPendingInvasion() {
+        if (!pendingInvasionRarity) return;
+
+        const rarity = pendingInvasionRarity;
+        pendingInvasionRarity = null; // Consume it
+        const rarityRoll = Math.random();
+
+        if (rarity === "Unique") {
+          spawnPirate();
+          spawnPirate();
+        } else if (
+          (rarity === "Legendary" && rarityRoll < 0.75) ||
+          (rarity === "Rare" && rarityRoll < 0.25)
+        ) {
+          spawnPirate();
+        }
+      }
+
       function generateStars() {
         stars = [];
         const base = (canvas.width * canvas.height) / 3000;
@@ -678,8 +840,10 @@
           if (keys.ArrowUp) player.speed += accel;
           if (keys[" "]) player.speed *= 0.92;
           player.speed *= player.friction;
-          player.x += player.speed * Math.cos(player.angle);
-          player.y += player.speed * Math.sin(player.angle);
+          player.velX = player.speed * Math.cos(player.angle);
+          player.velY = player.speed * Math.sin(player.angle);
+          player.x += player.velX;
+          player.y += player.velY;
         }
         if (gameState === "playing") {
           camera.x = player.x;
@@ -692,19 +856,19 @@
               generateEntitiesForSector(sX + x, sY + y);
           }
 
+          updatePirates(); // Update pirate logic
+
           asteroids.forEach((a) => {
             a.x += a.speedX;
             a.y += a.speedY;
             a.angle += a.rotationSpeed;
-
-            const dx = a.x - player.x;
-            const dy = a.y - player.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
+            const dx = a.x - player.x,
+              dy = a.y - player.y,
+              dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < REPULSION_RANGE) {
-              const forceAngle = Math.atan2(dy, dx);
-              const forceMagnitude =
-                REPULSION_STRENGTH * (1 - dist / REPULSION_RANGE);
+              const forceAngle = Math.atan2(dy, dx),
+                forceMagnitude =
+                  REPULSION_STRENGTH * (1 - dist / REPULSION_RANGE);
               a.speedX += Math.cos(forceAngle) * forceMagnitude;
               a.speedY += Math.sin(forceAngle) * forceMagnitude;
             }
@@ -792,6 +956,7 @@
               p.discovered = true;
               score += p.mineral.score;
               toggleDiscoveryPanel(true, p.mineral);
+              pendingInvasionRarity = p.mineral.rarity; // Set pending invasion
             }
           }
         });
@@ -816,6 +981,32 @@
             );
             ctx.restore();
           }
+        });
+
+        // Draw Pirate
+        pirates.forEach((pirate) => {
+          const pScreenX = pirate.x - camera.x + canvas.width / 2;
+          const pScreenY = pirate.y - camera.y + canvas.height / 2;
+
+          if (pirate.state === "chasing") {
+            ctx.beginPath();
+            ctx.arc(pScreenX, pScreenY, PIRATE_STEAL_RANGE, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 0, 0, 0.1)";
+            ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          ctx.save();
+          ctx.translate(pScreenX, pScreenY);
+          ctx.rotate(pirate.angle + Math.PI / 2);
+          ctx.drawImage(
+            pirateImage,
+            -pirateImage.width / 2,
+            -pirateImage.height / 2
+          );
+          ctx.restore();
         });
 
         if (currentNearestPlanet) {
@@ -896,10 +1087,13 @@
         shipImages.ship2.src = "ship2.png";
         shipImages.ship3.onload = assetLoaded;
         shipImages.ship3.src = "ship3.png";
+        pirateImage.onload = assetLoaded;
+        pirateImage.src = "Pirate.png";
 
         assetCache.appendChild(shipImages.ship1);
         assetCache.appendChild(shipImages.ship2);
         assetCache.appendChild(shipImages.ship3);
+        assetCache.appendChild(pirateImage);
 
         asteroidImageSources.forEach((src) => {
           const i = new Image();
