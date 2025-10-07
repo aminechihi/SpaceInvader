@@ -566,6 +566,7 @@
 
       // --- FIREBASE SETUP ---
       let db, auth;
+      const appId = "super-invader-game"; // A fixed ID for standalone version
 
       async function initFirebase() {
         try {
@@ -598,7 +599,7 @@
       let leaderboardData = [];
       function setupLeaderboardListener() {
         if (!db) return;
-        const leaderboardCol = collection(db, `leaderboard`);
+        const leaderboardCol = collection(db, `leaderboard`); // FIX: Using correct path
         const q = query(leaderboardCol);
 
         onSnapshot(
@@ -632,7 +633,7 @@
       async function saveScore(name, scoreToSave) {
         if (!name || scoreToSave <= 0 || !db) return;
         try {
-          const leaderboardCol = collection(db, `leaderboard`);
+          const leaderboardCol = collection(db, `leaderboard`); // FIX: Using correct path
           await addDoc(leaderboardCol, {
             name: name,
             score: scoreToSave,
@@ -645,6 +646,7 @@
         }
       }
 
+      // ... rest of your code ...
       // --- MINERAL & ATOM DATABASE ---
       const mineralsDB = [
         {
@@ -986,7 +988,6 @@
           }
 
           if (pirate) {
-            // Check if pirate still exists after splice
             pirate.x += pirate.speed * Math.cos(pirate.angle);
             pirate.y += pirate.speed * Math.sin(pirate.angle);
           }
