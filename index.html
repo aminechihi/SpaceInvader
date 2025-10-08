@@ -600,7 +600,6 @@
       function setupLeaderboardListener() {
         if (!db) return;
         const leaderboardPath = `artifacts/${appId}/public/data/leaderboard`;
-        console.log("Listening for leaderboard data at:", leaderboardPath); // DEBUG
         const leaderboardCol = collection(db, leaderboardPath);
         const q = query(leaderboardCol);
 
@@ -636,7 +635,6 @@
         if (!name || scoreToSave <= 0 || !db) return;
         try {
           const leaderboardPath = `artifacts/${appId}/public/data/leaderboard`;
-          console.log("Saving score to:", leaderboardPath); // DEBUG
           const leaderboardCol = collection(db, leaderboardPath);
           await addDoc(leaderboardCol, {
             name: name,
@@ -650,7 +648,7 @@
         }
       }
 
-      // ... (rest of your code is unchanged)
+      // --- MINERAL & ATOM DATABASE ---
       const mineralsDB = [
         {
           name: "Quartz",
@@ -733,6 +731,7 @@
         },
       ];
 
+      // --- ASSET LOADING ---
       const shipImages = {
         ship1: new Image(),
         ship2: new Image(),
@@ -790,6 +789,7 @@
         }
       }
 
+      // --- GAME STATE ---
       let gameState = "menu";
       let score = 0;
       let nearestPlanetInfo = {
@@ -805,6 +805,7 @@
       let station = null;
       let nearestStationInfo = { distance: Infinity };
 
+      // --- PLAYER & PIRATE ---
       const player = {
         x: 0,
         y: 0,
@@ -830,6 +831,7 @@
       const PIRATE_TURBO_MAX_SPEED = 9.5;
       const PIRATE_TURBO_ACCELERATION = 0.15;
 
+      // --- CAMERA & GENERATION ---
       const camera = { x: player.x, y: player.y };
       let stars = [];
       const starLayers = [
@@ -914,14 +916,108 @@
         }
       }
 
+      // --- PIRATE MECHANICS (RESTORED) ---
       function spawnPirate() {
-        // ...
+        const spawnAngle = Math.random() * Math.PI * 2;
+        const spawnDist = Math.max(canvas.width, canvas.height);
+        pirates.push({
+          x: player.x + Math.cos(spawnAngle) * spawnDist,
+          y: player.y + Math.sin(spawnAngle) * spawnDist,
+          radius: 20,
+          angle: 0,
+          rotationSpeed: 0.07,
+          speed: 0,
+          state: "chasing",
+          timer: PIRATE_INVASION_DURATION,
+        });
+        alarmAudio.play().catch((e) => console.warn("Alarm could not play"));
+        pirateWarning.style.display = "block";
       }
 
       function updatePirates() {
-        // ...
+        if (pirates.length === 0) return;
+
+        let isPlayerBeingStolenFrom = false;
+
+        for (let i = pirates.length - 1; i >= 0; i--) {
+          const pirate = pirates[i];
+          pirate.timer--;
+
+          if (pirate.state === "chasing") {
+            if (pirate.timer <= 0) {
+              pirate.state = "escaping";
+            }
+
+            const predictionTime = 30 + player.speed * 2;
+            const predictedPlayerX = player.x + player.velX * predictionTime;
+            const predictedPlayerY = player.y + player.velY * predictionTime;
+
+            const dx = predictedPlayerX - pirate.x;
+            const dy = predictedPlayerY - pirate.y;
+            const targetAngle = Math.atan2(dy, dx);
+
+            let angleDiff = targetAngle - pirate.angle;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            pirate.angle += angleDiff * pirate.rotationSpeed;
+            pirate.angle %= Math.PI * 2;
+
+            const targetMaxSpeed = keys.Shift
+              ? PIRATE_TURBO_MAX_SPEED
+              : PIRATE_BASE_MAX_SPEED;
+            const targetAcceleration = keys.Shift
+              ? PIRATE_TURBO_ACCELERATION
+              : PIRATE_BASE_ACCELERATION;
+            pirate.speed = Math.min(
+              targetMaxSpeed,
+              pirate.speed + targetAcceleration
+            );
+
+            const stealDist = Math.sqrt(
+              Math.pow(player.x - pirate.x, 2) +
+                Math.pow(player.y - pirate.y, 2)
+            );
+            if (stealDist < PIRATE_STEAL_RANGE) {
+              isPlayerBeingStolenFrom = true;
+            }
+          } else if (pirate.state === "escaping") {
+            pirate.speed += PIRATE_BASE_ACCELERATION;
+            if (pirate.timer < -300) {
+              pirates.splice(i, 1);
+            }
+          }
+
+          if (pirate) {
+            pirate.x += pirate.speed * Math.cos(pirate.angle);
+            pirate.y += pirate.speed * Math.sin(pirate.angle);
+          }
+        }
+
+        if (isPlayerBeingStolenFrom) {
+          stealProgress = Math.min(100, stealProgress + 0.5);
+          stealBarContainer.style.display = "block";
+          stealBar.style.width = `${stealProgress}%`;
+        } else {
+          stealProgress = Math.max(0, stealProgress - 0.1);
+          if (stealProgress > 0) {
+            stealBar.style.width = `${stealProgress}%`;
+          } else {
+            stealBarContainer.style.display = "none";
+          }
+        }
+
+        if (stealProgress >= 100) {
+          score = 0;
+          pirates.forEach((p) => (p.state = "escaping"));
+        }
+
+        if (pirates.length === 0) {
+          pirateWarning.style.display = "none";
+          stealBarContainer.style.display = "none";
+        }
       }
 
+      // --- INPUT & EVENT LISTENERS ---
       const keys = {
         ArrowUp: false,
         ArrowLeft: false,
@@ -1071,6 +1167,7 @@
         }
       }
 
+      // RESTORED
       function triggerPendingInvasion() {
         if (!pendingInvasionRarity) return;
 
@@ -1423,7 +1520,98 @@
       }
 
       function setupTouchControls() {
-        // ... (touch controls logic is unchanged)
+        const isTouch =
+          "ontouchstart" in window || navigator.maxTouchPoints > 0;
+        if (!isTouch) return;
+
+        touchControls.style.display = "block";
+
+        const joystickBase = document.getElementById("joystick-base");
+        const joystickKnob = document.getElementById("joystick-knob");
+        const thrustButton = document.getElementById("thrust-button");
+        const turboButton = document.getElementById("turbo-button");
+        const brakeButton = document.getElementById("brake-button");
+
+        let joyStickActive = false;
+        let joyStickId = null;
+
+        joystickBase.addEventListener(
+          "touchstart",
+          (e) => {
+            e.preventDefault();
+            if (joyStickActive) return;
+            joyStickActive = true;
+            joyStickId = e.changedTouches[0].identifier;
+          },
+          { passive: false }
+        );
+
+        window.addEventListener(
+          "touchmove",
+          (e) => {
+            if (!joyStickActive) return;
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+              if (touch.identifier === joyStickId) {
+                const rect = joystickBase.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const dx = touch.clientX - centerX;
+
+                const threshold = rect.width * 0.2;
+                if (dx < -threshold) {
+                  keys.ArrowLeft = true;
+                  keys.ArrowRight = false;
+                } else if (dx > threshold) {
+                  keys.ArrowLeft = false;
+                  keys.ArrowRight = true;
+                } else {
+                  keys.ArrowLeft = false;
+                  keys.ArrowRight = false;
+                }
+
+                const clampedX = Math.max(
+                  -rect.width / 2,
+                  Math.min(rect.width / 2, dx)
+                );
+                joystickKnob.style.transform = `translateX(${clampedX}px)`;
+              }
+            }
+          },
+          { passive: false }
+        );
+
+        window.addEventListener("touchend", (e) => {
+          for (let touch of e.changedTouches) {
+            if (touch.identifier === joyStickId) {
+              joyStickActive = false;
+              joyStickId = null;
+              keys.ArrowLeft = false;
+              keys.ArrowRight = false;
+              joystickKnob.style.transform = `translateX(0px)`;
+            }
+          }
+        });
+
+        const setupButton = (element, key) => {
+          element.addEventListener(
+            "touchstart",
+            (e) => {
+              e.preventDefault();
+              keys[key] = true;
+              element.classList.add("active");
+            },
+            { passive: false }
+          );
+          element.addEventListener("touchend", (e) => {
+            e.preventDefault();
+            keys[key] = false;
+            element.classList.remove("active");
+          });
+        };
+
+        setupButton(thrustButton, "ArrowUp");
+        setupButton(turboButton, "Shift");
+        setupButton(brakeButton, " ");
       }
 
       function loadAllAssets() {
