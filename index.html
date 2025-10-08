@@ -35,6 +35,7 @@
         overflow: hidden;
       }
 
+      /* CRT Overlay: Adjusted for less blur */
       #crt-overlay {
         position: absolute;
         top: 0;
@@ -53,12 +54,12 @@
         height: 100%;
         background: repeating-linear-gradient(
           0deg,
-          rgba(0, 0, 0, 0.4) 0px,
-          rgba(0, 0, 0, 0.4) 1px,
+          rgba(0, 0, 0, 0.3) 0px,
+          /* Slightly lower opacity */ rgba(0, 0, 0, 0.3) 1px,
           transparent 1px,
           transparent 2px
         );
-        opacity: 0.9;
+        opacity: 0.8; /* Reduced overall opacity */
       }
       #crt-overlay::after {
         content: "";
@@ -70,7 +71,7 @@
         background: radial-gradient(
           ellipse at center,
           rgba(0, 0, 0, 0) 50%,
-          rgba(0, 0, 0, 0.85) 100%
+          rgba(0, 0, 0, 0.8) 100% /* Slightly softer vignette */
         );
         animation: flicker 0.1s infinite;
       }
@@ -82,62 +83,53 @@
           opacity: 1;
         }
         100% {
-          opacity: 0.9;
+          opacity: 1;
         }
       }
 
-      @keyframes scroll-background {
-        from {
-          background-position: 0 0;
-        }
-        to {
-          background-position: -512px 0;
-        }
-      }
-
+      /* Game Screen Styling - Black Background */
       .game-screen {
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: #000;
-        background-image: url("https://cdn.wallpapersafari.com/63/68/f1g5Ap.png");
-        background-size: auto;
-        animation: scroll-background 60s linear infinite;
+        background-color: #000; /* Pure black background for clarity */
+        background-image: none; /* Removed background image */
         z-index: 20;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         text-align: center;
+        color: #33ff33; /* Cyber Green */
       }
 
+      /* Title H1 - Focused on Green/Cyan high contrast */
       .game-screen h1,
       .game-screen h2 {
-        text-shadow: 4px 4px #00ffff;
+        text-shadow: 1px 1px #000;
       }
       .game-screen h1 {
-        font-size: 3em;
-        /* NEW: Rainbow text styles */
+        font-size: 3.5em;
+        /* Keep Rainbow text for 'Super Invader' */
         background: linear-gradient(
           90deg,
-          red,
-          orange,
-          yellow,
-          green,
-          blue,
-          indigo,
-          violet
+          #ff3333,
+          #ffff33,
+          #33ff33,
+          #33ffff,
+          #3333ff
         );
-        background-size: 200% 100%; /* Make gradient wider than text to animate */
+        background-size: 200% 100%;
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: rainbow-text-animation 5s linear infinite;
-      }
 
-      /* NEW: Keyframes for rainbow animation */
+        /* Cyan text-shadow for a neon glow effect */
+        text-shadow: 0 0 10px #00ffff, 0 0 15px #00ffff;
+      }
       @keyframes rainbow-text-animation {
         0% {
           background-position: 0% 50%;
@@ -149,37 +141,44 @@
 
       .game-screen h2 {
         font-size: 2em;
+        color: #00ffff; /* Sharp Cyber Cyan */
+        text-shadow: 0 0 5px #00ffff;
       }
 
-      /* NEW: Style for instructions */
+      /* Instructions Styling */
       #main-menu-screen p.instructions {
-        font-size: 1em;
+        font-size: 0.8em;
         margin-top: 30px;
         margin-bottom: 30px;
-        color: #00ff00; /* Neon Green */
-        text-shadow: 1px 1px #000;
+        color: #33ff33; /* Cyber Green */
+        text-shadow: none;
         padding: 10px;
-        border: 1px dashed #00ff00;
+        border: 1px dashed #33ff33; /* Cyber Green border */
         max-width: 80%;
+        line-height: 1.5;
+        background-color: rgba(0, 0, 0, 0.85);
       }
 
+      /* Buttons - High Contrast Retro Style */
       .menu-button {
         font-family: "Press Start 2P", cursive;
-        font-size: 1.5em;
-        padding: 15px 30px;
-        background-color: #333;
-        color: white;
-        border: 2px solid white;
+        font-size: 1.2em;
+        padding: 10px 20px;
+        background-color: transparent;
+        color: #33ff33; /* Cyber Green text */
+        border: 2px solid #33ff33; /* Cyber Green border */
         cursor: pointer;
-        margin-top: 20px;
-        text-shadow: 2px 2px #000;
+        margin: 8px 10px;
+        text-shadow: 1px 1px #000;
+        transition: background-color 0.1s;
       }
       .menu-button:hover {
-        background-color: #00ffff;
+        background-color: #00ffff; /* Cyan hover effect */
         color: #000;
+        border-color: #00ffff;
       }
       .menu-button:disabled {
-        background-color: #222;
+        background-color: transparent;
         color: #555;
         border-color: #555;
         cursor: not-allowed;
@@ -192,16 +191,18 @@
         justify-content: center;
       }
 
+      /* Ship Card Styling adjustments */
       .ship-card {
-        border: 2px solid #888;
-        padding: 20px;
+        border: 2px solid #00ffff; /* Cyan border */
+        padding: 15px;
         cursor: pointer;
         transition: all 0.2s ease-in-out;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
       }
       .ship-card:hover {
-        border-color: #00ffff;
-        box-shadow: 0 0 15px #00ffff;
+        border-color: #33ff33; /* Green hover border */
+        box-shadow: 0 0 10px #33ff33; /* Green glow */
         transform: scale(1.05);
       }
       .ship-card img {
@@ -233,23 +234,27 @@
         height: 100%;
         overflow: auto;
         background-color: rgba(0, 0, 0, 0.8);
-        color: white;
+        color: #33ff33; /* Cyber Green */
         align-items: center;
         justify-content: center;
       }
       .modal-content {
-        background: rgba(10, 20, 40, 0.9);
-        border: 2px solid #00ffff;
+        background: rgba(0, 0, 0, 0.9);
+        border: 2px solid #33ff33; /* Green Modal Border */
         padding: 20px;
         width: 90%;
         max-width: 600px;
         text-align: center;
       }
+      .modal-content h2 {
+        color: #00ffff;
+        text-shadow: 0 0 5px #00ffff;
+      }
       .modal-content input {
         font-family: "Press Start 2P", cursive;
         background: #000;
-        border: 1px solid #fff;
-        color: #fff;
+        border: 1px solid #33ff33; /* Green Input Border */
+        color: #33ff33;
         padding: 10px;
         font-size: 1em;
         margin: 10px 0;
@@ -267,7 +272,7 @@
         display: flex;
         justify-content: space-between;
         padding: 8px;
-        border-bottom: 1px solid #555;
+        border-bottom: 1px solid #33ff33;
       }
       #leaderboard-list li span:first-child {
         margin-right: 20px;
@@ -282,7 +287,7 @@
         width: 90%;
         max-width: 800px;
         padding: 15px;
-        background: rgba(10, 20, 40, 0.85);
+        background: rgba(0, 0, 0, 0.85);
         border: 2px solid #00ffff;
         color: #fff;
         text-align: center;
@@ -394,6 +399,30 @@
         z-index: 16;
       }
 
+      /* NEW: Rank Notification Panel */
+      #rank-notification-panel {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 400px;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.9);
+        border: 4px solid #33ff33;
+        box-shadow: 0 0 20px #33ff33;
+        text-align: center;
+        z-index: 50;
+      }
+      #rank-notification-panel h2 {
+        color: #00ffff;
+      }
+      #rank-notification-panel p {
+        font-size: 1em;
+        margin: 10px 0;
+      }
+
       #touch-controls {
         display: none;
         position: absolute;
@@ -441,13 +470,10 @@
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.4);
       }
-      #thrust-button {
+      /* Removed #thrust-button styles and repositioned other buttons */
+      #turbo-button {
         right: 100px;
         bottom: 90px;
-      }
-      #turbo-button {
-        right: 30px;
-        bottom: 130px;
       }
       #brake-button {
         right: 30px;
@@ -481,9 +507,11 @@
     <div id="main-menu-screen" class="game-screen">
       <h1>Super Invader</h1>
       <p class="instructions">
-        **Controls:**<br />
+        **Controls (PC/Keyboard):**<br />
         <br />
-        **&larr; &uarr; &rarr; Arrow Keys:** Move & Rotate Ship<br />
+        **&larr; &rarr; Arrow Keys:** Rotate Ship<br />
+        **&uarr; Arrow Key:** Thrust Forward<br />
+        **&darr; Arrow Key:** Reverse Thrust<br />
         **Shift:** Use Turbo Thrusters<br />
         **Space:** Brake / Slow Down<br />
         **E:** Interact (e.g., Close Panel / Dock)
@@ -495,6 +523,21 @@
         <button id="leaderboardButton" class="menu-button">Leaderboard</button>
       </div>
     </div>
+
+    <div id="pilot-name-screen" class="game-screen" style="display: none">
+      <h2>Identify Yourself, Pilot</h2>
+      <p>Enter your name before launching your vessel.</p>
+      <input
+        type="text"
+        id="pilotNameInput"
+        placeholder="Pilot Name"
+        maxlength="10"
+      />
+      <button id="confirmPilotNameButton" class="menu-button" disabled>
+        Start Mission
+      </button>
+    </div>
+
     <div id="ship-select-screen" class="game-screen" style="display: none">
       <h2>Choose Your Ship</h2>
       <div id="ship-select-container">
@@ -535,6 +578,11 @@
       <div id="steal-progress-bar"></div>
     </div>
     <div id="dock-prompt">Press 'E' to Dock</div>
+    <div id="rank-notification-panel">
+      <h2>RANK UP!</h2>
+      <p>Congratulations, Pilot!</p>
+      <p>You are now a <span id="new-rank-name"></span></p>
+    </div>
 
     <div id="leaderboard-modal" class="modal">
       <div class="modal-content">
@@ -565,7 +613,6 @@
       <div id="joystick-base">
         <div id="joystick-knob"></div>
       </div>
-      <div id="thrust-button" class="touch-button">THRUST</div>
       <div id="turbo-button" class="touch-button">TURBO</div>
       <div id="brake-button" class="touch-button">BRAKE</div>
       <div id="dock-button" class="touch-button">DOCK</div>
@@ -584,9 +631,11 @@
         addDoc,
         onSnapshot,
         query,
-        orderBy, // ADDED: For leaderboard sorting
-        limit, // ADDED: For fetching top scores
+        where,
+        orderBy,
+        limit,
         setLogLevel,
+        getDocs,
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
       // --- SETUP ---
@@ -597,13 +646,23 @@
       // UI Elements
       const mainMenuScreen = document.getElementById("main-menu-screen");
       const shipSelectScreen = document.getElementById("ship-select-screen");
+      const pilotNameScreen = document.getElementById("pilot-name-screen");
       const gameOverScreen = document.getElementById("game-over-screen");
       const discoveryPanel = document.getElementById("discovery-panel");
       const startButton = document.getElementById("startButton");
       const restartButton = document.getElementById("restartButton");
       const shipCards = document.querySelectorAll(".ship-card");
+      const pilotNameInput = document.getElementById("pilotNameInput");
+      const confirmPilotNameButton = document.getElementById(
+        "confirmPilotNameButton"
+      );
+      const rankNotificationPanel = document.getElementById(
+        "rank-notification-panel"
+      );
+      const newRankNameSpan = document.getElementById("new-rank-name");
+
       const pirateWarning = document.getElementById("pirate-warning");
-      const invasionTimer = document.getElementById("invasion-timer"); // NEW
+      const invasionTimer = document.getElementById("invasion-timer");
       const stealBarContainer = document.getElementById(
         "steal-progress-bar-container"
       );
@@ -662,7 +721,6 @@
         const leaderboardPath = `artifacts/${appId}/public/data/leaderboard`;
         const leaderboardCol = collection(db, leaderboardPath);
 
-        // UPDATED: Use orderBy to sort scores in descending order and limit the results
         const q = query(leaderboardCol, orderBy("score", "desc"), limit(20));
 
         onSnapshot(
@@ -672,7 +730,6 @@
             snapshot.forEach((doc) => {
               leaderboardData.push(doc.data());
             });
-            // We no longer need to sort the data locally, as it's sorted by the query.
             updateLeaderboardUI();
           },
           (error) => {
@@ -695,19 +752,95 @@
 
       async function saveScore(name, scoreToSave) {
         if (!name || scoreToSave <= 0 || !db) return;
+
+        const leaderboardPath = `artifacts/${appId}/public/data/leaderboard`;
+        const leaderboardCol = collection(db, leaderboardPath);
+
+        // NEW: Check if the exact score already exists for this pilot
         try {
-          const leaderboardPath = `artifacts/${appId}/public/data/leaderboard`;
-          const leaderboardCol = collection(db, leaderboardPath);
+          const q = query(
+            leaderboardCol,
+            where("name", "==", name),
+            where("score", "==", scoreToSave)
+          );
+
+          const existingDocs = await getDocs(q);
+          if (existingDocs.size > 0) {
+            console.warn(
+              `Pilot ${name} already saved score ${scoreToSave}. Skipping.`
+            );
+            return;
+          }
+
           await addDoc(leaderboardCol, {
             name: name,
             score: scoreToSave,
             timestamp: new Date(),
           });
-          console.log("Score saved successfully!");
-          score = 0;
+          console.log("Score saved successfully! Current score retained.");
         } catch (error) {
           console.error("Error saving score: ", error);
         }
+      }
+
+      // NEW: Pilot Rank Definitions
+      const PILOT_RANKS = [
+        { score: 35001, name: "Galactic Overlord" },
+        { score: 25001, name: "Super Invader" },
+        { score: 17001, name: "Cosmic Invader" },
+        { score: 10001, name: "Astro Scout" },
+        { score: 5001, name: "Novice Explorer" },
+        { score: 0, name: "Rookie Pilot" },
+      ];
+      let lastAchievedRankScore = 0; // Tracks the threshold of the current rank
+      let basePirateSpeedMultiplier = 1.0; // Starts at 1.0
+
+      // Utility function to get the current rank name
+      function getCurrentRank(currentScore) {
+        for (const rank of PILOT_RANKS) {
+          if (currentScore >= rank.score) {
+            return rank;
+          }
+        }
+        return PILOT_RANKS[PILOT_RANKS.length - 1]; // Rookie Pilot
+      }
+
+      // Function to check for rank up and notify
+      function checkRankUp() {
+        const currentRank = getCurrentRank(score);
+        if (currentRank.score > lastAchievedRankScore) {
+          // If a rank is skipped (e.g., jump from 4000 to 12000),
+          // we calculate the new multiplier based on the number of skipped ranks.
+          const oldRankIndex = PILOT_RANKS.findIndex(
+            (r) => r.score === lastAchievedRankScore
+          );
+          const newRankIndex = PILOT_RANKS.findIndex(
+            (r) => r.score === currentRank.score
+          );
+          const ranksGained = oldRankIndex - newRankIndex;
+
+          if (ranksGained > 0) {
+            basePirateSpeedMultiplier *= Math.pow(1.2, ranksGained);
+            console.log(
+              `Ranks gained: ${ranksGained}. New Multiplier: ${basePirateSpeedMultiplier.toFixed(
+                2
+              )}`
+            );
+          }
+
+          lastAchievedRankScore = currentRank.score;
+          showRankNotification(currentRank.name);
+        }
+      }
+
+      function showRankNotification(rankName) {
+        newRankNameSpan.textContent = rankName;
+        rankNotificationPanel.style.display = "block";
+
+        // Hide after 3 seconds
+        setTimeout(() => {
+          rankNotificationPanel.style.display = "none";
+        }, 3000);
       }
 
       const mineralsDB = [
@@ -891,17 +1024,20 @@
         image: null,
         velX: 0,
         velY: 0,
+        name: "Pilot",
+        shipId: null,
       };
       const REPULSION_RANGE = 150;
       const REPULSION_STRENGTH = 0.5;
 
       let pirates = [];
       const PIRATE_STEAL_RANGE = 300;
-      const PIRATE_INVASION_DURATION = 25 * 60; // UPDATED
-      const PIRATE_BASE_MAX_SPEED = 8.0; // UPDATED
-      const PIRATE_BASE_ACCELERATION = 0.15; // UPDATED
-      const PIRATE_TURBO_MAX_SPEED = 12.0; // UPDATED
-      const PIRATE_TURBO_ACCELERATION = 0.2; // UPDATED
+      const PIRATE_INVASION_DURATION = 25 * 60;
+
+      const INITIAL_PIRATE_BASE_MAX_SPEED = 8.0;
+      const INITIAL_PIRATE_BASE_ACCELERATION = 0.15;
+      const INITIAL_PIRATE_TURBO_MAX_SPEED = 12.0;
+      const INITIAL_PIRATE_TURBO_ACCELERATION = 0.2;
 
       let superInvaders = [];
 
@@ -1012,6 +1148,17 @@
 
         let isPlayerBeingStolenFrom = false;
 
+        // Calculate current maximum speeds based on rank multiplier
+        const PIRATE_BASE_MAX_SPEED =
+          INITIAL_PIRATE_BASE_MAX_SPEED * basePirateSpeedMultiplier;
+        const PIRATE_TURBO_MAX_SPEED =
+          INITIAL_PIRATE_TURBO_MAX_SPEED * basePirateSpeedMultiplier;
+
+        const PIRATE_BASE_ACCELERATION =
+          INITIAL_PIRATE_BASE_ACCELERATION * basePirateSpeedMultiplier;
+        const PIRATE_TURBO_ACCELERATION =
+          INITIAL_PIRATE_TURBO_ACCELERATION * basePirateSpeedMultiplier;
+
         const firstPirate = pirates[0];
         const timeLeft = Math.ceil(firstPirate.timer / 60);
         invasionTimer.textContent = `${timeLeft}s`;
@@ -1058,7 +1205,7 @@
               isPlayerBeingStolenFrom = true;
             }
           } else if (pirate.state === "escaping") {
-            pirate.speed += PIRATE_BASE_ACCELERATION;
+            pirate.speed += INITIAL_PIRATE_BASE_ACCELERATION; // Use base acceleration for escape
             if (pirate.timer < -300) {
               pirates.splice(i, 1);
             }
@@ -1168,19 +1315,37 @@
         }
       }
 
+      // REVERTED to 4-way arrow key controls for rotational movement
       const keys = {
         ArrowUp: false,
+        ArrowDown: false,
         ArrowLeft: false,
         ArrowRight: false,
         Shift: false,
         " ": false,
         e: false,
       };
+
+      let touchMoving = false;
+
       window.addEventListener("keydown", (e) => {
-        if (keys.hasOwnProperty(e.key)) {
+        // Explicitly check for all needed keys
+        if (
+          [
+            "ArrowUp",
+            "ArrowDown",
+            "ArrowLeft",
+            "ArrowRight",
+            "Shift",
+            " ",
+            "e",
+            "E",
+          ].includes(e.key)
+        ) {
           e.preventDefault();
           keys[e.key] = true;
         }
+
         if (e.key === "e" || e.key === "E") {
           if (isPanelOpen) {
             toggleDiscoveryPanel(false);
@@ -1190,7 +1355,18 @@
         }
       });
       window.addEventListener("keyup", (e) => {
-        if (keys.hasOwnProperty(e.key)) {
+        if (
+          [
+            "ArrowUp",
+            "ArrowDown",
+            "ArrowLeft",
+            "ArrowRight",
+            "Shift",
+            " ",
+            "e",
+            "E",
+          ].includes(e.key)
+        ) {
           keys[e.key] = false;
         }
       });
@@ -1217,11 +1393,29 @@
         loopAudio.currentTime = 0;
       });
 
+      // NEW: Pilot Name input listener
+      pilotNameInput.addEventListener("input", () => {
+        confirmPilotNameButton.disabled =
+          pilotNameInput.value.trim().length === 0;
+      });
+
+      // NEW: Confirm Pilot Name logic
+      confirmPilotNameButton.addEventListener("click", () => {
+        const name = pilotNameInput.value.trim();
+        if (name) {
+          player.name = name;
+          pilotNameScreen.style.display = "none";
+          startGame(player.shipId); // Start game with saved shipId
+        }
+      });
+
       shipCards.forEach((card) => {
         if (card.classList.contains("locked")) return;
         card.addEventListener("click", () => {
-          const shipId = card.getAttribute("data-ship");
-          startGame(shipId);
+          player.shipId = card.getAttribute("data-ship"); // Save ship ID
+          shipSelectScreen.style.display = "none";
+          pilotNameScreen.style.display = "flex"; // Go to name input screen
+          gameState = "nameInput"; // Set new state
         });
       });
 
@@ -1246,9 +1440,11 @@
         const playerName = document
           .getElementById("playerNameInput")
           .value.trim();
-        if (playerName) {
-          saveScore(playerName, score);
-          document.getElementById("playerNameInput").value = "";
+        // Use the actual player name for saving, fall back to input if needed
+        const nameToSave = playerName || player.name || "Anon";
+        if (nameToSave) {
+          saveScore(nameToSave, score);
+          document.getElementById("playerNameInput").value = player.name; // Keep player name in input field
           undock();
         } else {
           document.getElementById("playerNameInput").style.borderColor = "red";
@@ -1258,10 +1454,13 @@
 
       function startGame(shipId) {
         player.image = shipImages[shipId];
-        shipSelectScreen.style.display = "none";
+        // The display logic is now handled by the name input screen
         canvas.style.display = "block";
 
         resetGameData();
+        // Initial rank check to set lastAchievedRankScore
+        lastAchievedRankScore = getCurrentRank(score).score;
+
         gameState = "playing";
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
@@ -1287,7 +1486,9 @@
         asteroids = [];
         superInvaders = [];
         generatedSectors.clear();
-        score = 0;
+        score = 0; // Score only resets upon starting a new game
+        basePirateSpeedMultiplier = 1.0; // Reset pirate difficulty
+        lastAchievedRankScore = 0;
         pirates = [];
         station = null;
         stealProgress = 0;
@@ -1349,6 +1550,7 @@
         if (!isNearStation()) return;
         gameState = "docked";
         document.getElementById("save-score-value").textContent = score;
+        document.getElementById("playerNameInput").value = player.name; // Pre-fill name
         saveScoreModal.style.display = "flex";
       }
 
@@ -1378,20 +1580,43 @@
       window.addEventListener("resize", resizeCanvas);
 
       function gameLoop() {
-        if (gameState === "docked") {
+        if (gameState === "docked" || gameState === "nameInput") {
           requestAnimationFrame(gameLoop);
           return;
         }
 
         if (gameState === "playing" && !isPanelOpen) {
+          // Check for rank up every frame based on current score
+          checkRankUp();
+
           const accel = keys.Shift
             ? player.turboAcceleration
             : player.acceleration;
+
+          // 1. Rotation (Left/Right)
           if (keys.ArrowLeft) player.angle -= player.rotationSpeed;
           if (keys.ArrowRight) player.angle += player.rotationSpeed;
-          if (keys.ArrowUp) player.speed += accel;
+
+          // 2. Thrust Forward/Reverse (Up/Down)
+          if (keys.ArrowUp) {
+            player.speed += accel;
+          } else if (keys.ArrowDown) {
+            // Apply reverse thrust/deceleration
+            player.speed -= accel * 0.5;
+          }
+
+          // Mobile Logic: Thrust if joystick is active (touchMoving is set in touch controls)
+          if (touchMoving) {
+            player.speed += accel;
+          }
+
+          // Brake/Friction/Velocity Update
           if (keys[" "]) player.speed *= 0.92;
           player.speed *= player.friction;
+
+          // Clamp speed to prevent reverse speed from going too far back
+          player.speed = Math.max(-10, Math.min(player.speed, 20));
+
           player.velX = player.speed * Math.cos(player.angle);
           player.velY = player.speed * Math.sin(player.angle);
           player.x += player.velX;
@@ -1678,7 +1903,12 @@
           ctx.font = '16px "Press Start 2P"';
           ctx.fillStyle = "white";
           ctx.textAlign = "left";
-          ctx.fillText(`Score: ${score}`, 10, 30);
+
+          const currentRankName = getCurrentRank(score).name;
+
+          ctx.fillText(`${player.name} (${currentRankName})`, 10, 30);
+          ctx.fillText(`Score: ${score}`, 10, 60);
+
           if (nearestPlanetInfo.name) {
             ctx.fillStyle = nearestPlanetInfo.discovered
               ? "lightgreen"
@@ -1688,7 +1918,7 @@
                 nearestPlanetInfo.distance
               )}`,
               10,
-              60
+              90
             );
           }
           if (station) {
@@ -1696,7 +1926,7 @@
             ctx.fillText(
               `Station - ${Math.round(nearestStationInfo.distance)}`,
               10,
-              90
+              120
             );
           }
         }
@@ -1714,12 +1944,13 @@
 
         const joystickBase = document.getElementById("joystick-base");
         const joystickKnob = document.getElementById("joystick-knob");
-        const thrustButton = document.getElementById("thrust-button");
         const turboButton = document.getElementById("turbo-button");
         const brakeButton = document.getElementById("brake-button");
 
         let joyStickActive = false;
         let joyStickId = null;
+
+        const JOYSTICK_MAX_TRAVEL = 60; // Half of joystick base width/height
 
         joystickBase.addEventListener(
           "touchstart",
@@ -1728,6 +1959,7 @@
             if (joyStickActive) return;
             joyStickActive = true;
             joyStickId = e.changedTouches[0].identifier;
+            touchMoving = true; // Start applying thrust immediately
           },
           { passive: false }
         );
@@ -1741,25 +1973,24 @@
               if (touch.identifier === joyStickId) {
                 const rect = joystickBase.getBoundingClientRect();
                 const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+
                 const dx = touch.clientX - centerX;
+                const dy = touch.clientY - centerY;
 
-                const threshold = rect.width * 0.2;
-                if (dx < -threshold) {
-                  keys.ArrowLeft = true;
-                  keys.ArrowRight = false;
-                } else if (dx > threshold) {
-                  keys.ArrowLeft = false;
-                  keys.ArrowRight = true;
-                } else {
-                  keys.ArrowLeft = false;
-                  keys.ArrowRight = false;
-                }
+                // Calculate new player angle based on joystick direction (mobile only)
+                player.angle = Math.atan2(dy, dx) + Math.PI / 2;
 
-                const clampedX = Math.max(
-                  -rect.width / 2,
-                  Math.min(rect.width / 2, dx)
-                );
-                joystickKnob.style.transform = `translateX(${clampedX}px)`;
+                // Clamp knob position
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const ratio =
+                  dist > JOYSTICK_MAX_TRAVEL ? JOYSTICK_MAX_TRAVEL / dist : 1;
+
+                const clampedX = dx * ratio;
+                const clampedY = dy * ratio;
+
+                // Move knob relative to center
+                joystickKnob.style.transform = `translate(${clampedX}px, ${clampedY}px)`;
               }
             }
           },
@@ -1771,9 +2002,10 @@
             if (touch.identifier === joyStickId) {
               joyStickActive = false;
               joyStickId = null;
-              keys.ArrowLeft = false;
-              keys.ArrowRight = false;
-              joystickKnob.style.transform = `translateX(0px)`;
+              touchMoving = false; // Stop applying thrust
+
+              // Reset knob position
+              joystickKnob.style.transform = `translate(0px, 0px)`;
             }
           }
         });
@@ -1795,7 +2027,6 @@
           });
         };
 
-        setupButton(thrustButton, "ArrowUp");
         setupButton(turboButton, "Shift");
         setupButton(brakeButton, " ");
       }
