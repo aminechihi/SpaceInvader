@@ -102,7 +102,7 @@
         width: 100%;
         height: 100%;
         background-color: #000;
-        background-image: url("https://cdn.wallpapersafari.com/63/68/f1g5Ap.png");
+        background-image: url("https://cdn.wallpapersafari.com/15/33/GJ8e6P.png");
         background-size: auto;
         animation: scroll-background 60s linear infinite;
         z-index: 20;
@@ -119,9 +119,48 @@
       }
       .game-screen h1 {
         font-size: 3em;
+        /* NEW: Rainbow text styles */
+        background: linear-gradient(
+          90deg,
+          red,
+          orange,
+          yellow,
+          green,
+          blue,
+          indigo,
+          violet
+        );
+        background-size: 200% 100%; /* Make gradient wider than text to animate */
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: rainbow-text-animation 5s linear infinite;
       }
+
+      /* NEW: Keyframes for rainbow animation */
+      @keyframes rainbow-text-animation {
+        0% {
+          background-position: 0% 50%;
+        }
+        100% {
+          background-position: 100% 50%;
+        }
+      }
+
       .game-screen h2 {
         font-size: 2em;
+      }
+
+      /* NEW: Style for instructions */
+      #main-menu-screen p.instructions {
+        font-size: 1em;
+        margin-top: 30px;
+        margin-bottom: 30px;
+        color: #00ff00; /* Neon Green */
+        text-shadow: 1px 1px #000;
+        padding: 10px;
+        border: 1px dashed #00ff00;
+        max-width: 80%;
       }
 
       .menu-button {
@@ -439,9 +478,16 @@
     <div id="crt-overlay"></div>
     <div id="asset-cache"></div>
 
-    <!-- Menu Screens -->
     <div id="main-menu-screen" class="game-screen">
       <h1>Super Invader</h1>
+      <p class="instructions">
+        **Controls:**<br />
+        <br />
+        **&larr; &uarr; &rarr; Arrow Keys:** Move & Rotate Ship<br />
+        **Shift:** Use Turbo Thrusters<br />
+        **Space:** Brake / Slow Down<br />
+        **E:** Interact (e.g., Close Panel / Dock)
+      </p>
       <div>
         <button id="startButton" class="menu-button" disabled>
           Loading...
@@ -477,7 +523,6 @@
       <button id="restartButton" class="menu-button">Main Menu</button>
     </div>
 
-    <!-- In-Game UI -->
     <div id="discovery-panel">
       <h2 id="discovery-name"></h2>
       <p id="discovery-formula"></p>
@@ -491,7 +536,6 @@
     </div>
     <div id="dock-prompt">Press 'E' to Dock</div>
 
-    <!-- Modals -->
     <div id="leaderboard-modal" class="modal">
       <div class="modal-content">
         <h2>Leaderboard</h2>
@@ -517,7 +561,6 @@
       </div>
     </div>
 
-    <!-- Touch Controls UI -->
     <div id="touch-controls">
       <div id="joystick-base">
         <div id="joystick-knob"></div>
@@ -851,10 +894,10 @@
       let pirates = [];
       const PIRATE_STEAL_RANGE = 300;
       const PIRATE_INVASION_DURATION = 25 * 60; // UPDATED
-      const PIRATE_BASE_MAX_SPEED = 8.0; // UPDATED
-      const PIRATE_BASE_ACCELERATION = 0.15; // UPDATED
-      const PIRATE_TURBO_MAX_SPEED = 12.0; // UPDATED
-      const PIRATE_TURBO_ACCELERATION = 0.2; // UPDATED
+      const PIRATE_BASE_MAX_SPEED = 14.0; // UPDATED
+      const PIRATE_BASE_ACCELERATION = 0.2; // UPDATED
+      const PIRATE_TURBO_MAX_SPEED = 18.0; // UPDATED
+      const PIRATE_TURBO_ACCELERATION = 0.5; // UPDATED
 
       let superInvaders = [];
 
