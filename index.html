@@ -648,7 +648,6 @@
         }
       }
 
-      // --- MINERAL & ATOM DATABASE ---
       const mineralsDB = [
         {
           name: "Quartz",
@@ -731,7 +730,6 @@
         },
       ];
 
-      // --- ASSET LOADING ---
       const shipImages = {
         ship1: new Image(),
         ship2: new Image(),
@@ -739,6 +737,7 @@
       };
       const pirateImage = new Image();
       const stationImage = new Image();
+      const superInvaderImages = [];
       const asteroidImages = [];
       const planetSpriteSheets = [];
       const PLANET_FRAME_COUNT = 24;
@@ -769,16 +768,29 @@
         "Asteroids/14.png",
         "Asteroids/15.png",
       ];
+      const superInvaderImageSources = [
+        "Superinvaders/inv1.png",
+        "Superinvaders/inv2.png",
+        "Superinvaders/inv3.png",
+        "Superinvaders/inv4.png",
+        "Superinvaders/inv5.png",
+        "Superinvaders/inv6.png",
+        "Superinvaders/inv7.png",
+        "Superinvaders/inv8.png",
+        "Superinvaders/inv9.png",
+      ];
 
       const radarAudio = new Audio("Radar.mp3");
       const loopAudio = new Audio("loop.mp3");
       const alarmAudio = new Audio("alarm.mp3");
+      const supAudio = new Audio("Sup.mp3"); // NEW
 
       let assetsToLoad =
         planetSpriteSheetSources.length +
         asteroidImageSources.length +
         Object.keys(shipImages).length +
-        2;
+        2 +
+        superInvaderImageSources.length;
       let assetsLoaded = 0;
 
       function assetLoaded() {
@@ -789,7 +801,6 @@
         }
       }
 
-      // --- GAME STATE ---
       let gameState = "menu";
       let score = 0;
       let nearestPlanetInfo = {
@@ -805,7 +816,6 @@
       let station = null;
       let nearestStationInfo = { distance: Infinity };
 
-      // --- PLAYER & PIRATE ---
       const player = {
         x: 0,
         y: 0,
@@ -831,7 +841,8 @@
       const PIRATE_TURBO_MAX_SPEED = 9.5;
       const PIRATE_TURBO_ACCELERATION = 0.15;
 
-      // --- CAMERA & GENERATION ---
+      let superInvaders = [];
+
       const camera = { x: player.x, y: player.y };
       let stars = [];
       const starLayers = [
@@ -916,7 +927,6 @@
         }
       }
 
-      // --- PIRATE MECHANICS (RESTORED) ---
       function spawnPirate() {
         const spawnAngle = Math.random() * Math.PI * 2;
         const spawnDist = Math.max(canvas.width, canvas.height);
@@ -1017,7 +1027,79 @@
         }
       }
 
-      // --- INPUT & EVENT LISTENERS ---
+      function spawnSuperInvader() {
+        if (superInvaders.length > 0) return;
+
+        supAudio
+          .play()
+          .catch((e) => console.warn("Super invader sound failed to play")); // NEW
+
+        const edge = Math.floor(Math.random() * 4);
+        let startX, startY, endX, endY;
+        const buffer = 100;
+
+        if (edge === 0) {
+          startX = Math.random() * canvas.width;
+          startY = -buffer;
+          endX = Math.random() * canvas.width;
+          endY = canvas.height + buffer;
+        } else if (edge === 1) {
+          startX = canvas.width + buffer;
+          startY = Math.random() * canvas.height;
+          endX = -buffer;
+          endY = Math.random() * canvas.height;
+        } else if (edge === 2) {
+          startX = Math.random() * canvas.width;
+          startY = canvas.height + buffer;
+          endX = Math.random() * canvas.width;
+          endY = -buffer;
+        } else {
+          startX = -buffer;
+          startY = Math.random() * canvas.height;
+          endX = canvas.width + buffer;
+          endY = Math.random() * canvas.height;
+        }
+
+        const angle = Math.atan2(endY - startY, endX - startX);
+        const namePrefixes = ["X", "Z", "V", "R", "T"];
+        const name = `${
+          namePrefixes[Math.floor(Math.random() * namePrefixes.length)]
+        }${Math.floor(Math.random() * 9) + 1} Super Invader`;
+
+        superInvaders.push({
+          x: startX + camera.x,
+          y: startY + camera.y,
+          angle: angle,
+          speed: (15 + Math.random() * 5) * 1.5, // UPDATED
+          image:
+            superInvaderImages[
+              Math.floor(Math.random() * superInvaderImages.length)
+            ],
+          name: name,
+        });
+      }
+
+      function updateSuperInvaders() {
+        for (let i = superInvaders.length - 1; i >= 0; i--) {
+          const invader = superInvaders[i];
+          invader.x += invader.speed * Math.cos(invader.angle);
+          invader.y += invader.speed * Math.sin(invader.angle);
+
+          const screenX = invader.x - camera.x;
+          const screenY = invader.y - camera.y;
+          const buffer = 200;
+
+          if (
+            screenX < -buffer ||
+            screenX > canvas.width + buffer ||
+            screenY < -buffer ||
+            screenY > canvas.height + buffer
+          ) {
+            superInvaders.splice(i, 1);
+          }
+        }
+      }
+
       const keys = {
         ArrowUp: false,
         ArrowLeft: false,
@@ -1052,6 +1134,8 @@
         alarmAudio.pause();
         radarAudio.play().catch(() => {});
         radarAudio.pause();
+        supAudio.play().catch(() => {});
+        supAudio.pause();
 
         mainMenuScreen.style.display = "none";
         shipSelectScreen.style.display = "flex";
@@ -1133,6 +1217,7 @@
         camera.y = 0;
         planets = [];
         asteroids = [];
+        superInvaders = [];
         generatedSectors.clear();
         score = 0;
         pirates = [];
@@ -1167,7 +1252,6 @@
         }
       }
 
-      // RESTORED
       function triggerPendingInvasion() {
         if (!pendingInvasionRarity) return;
 
@@ -1256,6 +1340,11 @@
           }
 
           updatePirates();
+          updateSuperInvaders();
+
+          if (Math.random() < 0.001) {
+            spawnSuperInvader();
+          }
 
           asteroids.forEach((a) => {
             a.x += a.speedX;
@@ -1301,8 +1390,12 @@
         }
 
         ctx.save();
-        if (gameState === "playing" && keys.Shift && player.speed > 5) {
-          const shake = player.speed * 0.2;
+        let invaderShake = superInvaders.length > 0;
+        if (
+          (gameState === "playing" && keys.Shift && player.speed > 5) ||
+          invaderShake
+        ) {
+          const shake = invaderShake ? 2 : player.speed * 0.2;
           ctx.translate(
             (Math.random() - 0.5) * shake,
             (Math.random() - 0.5) * shake
@@ -1441,6 +1534,29 @@
             -pirateImage.height / 2
           );
           ctx.restore();
+        });
+
+        superInvaders.forEach((invader) => {
+          const iScreenX = invader.x - camera.x;
+          const iScreenY = invader.y - camera.y;
+
+          ctx.save();
+          ctx.translate(iScreenX, iScreenY);
+          ctx.rotate(invader.angle + Math.PI / 2);
+          ctx.drawImage(
+            invader.image,
+            -invader.image.width / 2,
+            -invader.image.height / 2
+          );
+          ctx.restore();
+
+          ctx.font = '12px "Press Start 2P"';
+          ctx.textAlign = "center";
+          ctx.shadowColor = "#00ffff";
+          ctx.shadowBlur = 10;
+          ctx.fillStyle = "#00ffff";
+          ctx.fillText(invader.name, iScreenX, iScreenY - 40);
+          ctx.shadowBlur = 0;
         });
 
         if (currentNearestPlanet) {
@@ -1630,10 +1746,7 @@
         setupImageLoader(shipImages.ship2, "ship2.png");
         setupImageLoader(shipImages.ship3, "ship3.png");
         setupImageLoader(pirateImage, "Pirate.png");
-        setupImageLoader(
-          stationImage,
-          "https://placehold.co/200x200/808080/FFFFFF?text=Station"
-        );
+        setupImageLoader(stationImage, "Station.png");
 
         asteroidImageSources.forEach((src) => {
           const i = new Image();
@@ -1644,6 +1757,12 @@
         planetSpriteSheetSources.forEach((src) => {
           const i = new Image();
           planetSpriteSheets.push(i);
+          setupImageLoader(i, src);
+        });
+
+        superInvaderImageSources.forEach((src) => {
+          const i = new Image();
+          superInvaderImages.push(i);
           setupImageLoader(i, src);
         });
 
