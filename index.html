@@ -599,10 +599,9 @@
       let leaderboardData = [];
       function setupLeaderboardListener() {
         if (!db) return;
-        const leaderboardCol = collection(
-          db,
-          `artifacts/${appId}/public/data/leaderboard`
-        ); // FIX: Using correct path
+        const leaderboardPath = `artifacts/${appId}/public/data/leaderboard`;
+        console.log("Listening for leaderboard data at:", leaderboardPath); // DEBUG
+        const leaderboardCol = collection(db, leaderboardPath);
         const q = query(leaderboardCol);
 
         onSnapshot(
@@ -636,10 +635,9 @@
       async function saveScore(name, scoreToSave) {
         if (!name || scoreToSave <= 0 || !db) return;
         try {
-          const leaderboardCol = collection(
-            db,
-            `artifacts/${appId}/public/data/leaderboard`
-          ); // FIX: Using correct path
+          const leaderboardPath = `artifacts/${appId}/public/data/leaderboard`;
+          console.log("Saving score to:", leaderboardPath); // DEBUG
+          const leaderboardCol = collection(db, leaderboardPath);
           await addDoc(leaderboardCol, {
             name: name,
             score: scoreToSave,
@@ -652,7 +650,7 @@
         }
       }
 
-      // ... (rest of the code is unchanged)
+      // ... (rest of your code is unchanged)
       const mineralsDB = [
         {
           name: "Quartz",
