@@ -102,7 +102,7 @@
         width: 100%;
         height: 100%;
         background-color: #000;
-        background-image: url("https://cdn.wallpapersafari.com/15/33/GJ8e6P.png");
+        background-image: url("https://cdn.wallpapersafari.com/63/68/f1g5Ap.png");
         background-size: auto;
         animation: scroll-background 60s linear infinite;
         z-index: 20;
@@ -584,6 +584,8 @@
         addDoc,
         onSnapshot,
         query,
+        orderBy, // ADDED: For leaderboard sorting
+        limit, // ADDED: For fetching top scores
         setLogLevel,
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -659,7 +661,9 @@
         if (!db) return;
         const leaderboardPath = `artifacts/${appId}/public/data/leaderboard`;
         const leaderboardCol = collection(db, leaderboardPath);
-        const q = query(leaderboardCol);
+
+        // UPDATED: Use orderBy to sort scores in descending order and limit the results
+        const q = query(leaderboardCol, orderBy("score", "desc"), limit(20));
 
         onSnapshot(
           q,
@@ -668,7 +672,7 @@
             snapshot.forEach((doc) => {
               leaderboardData.push(doc.data());
             });
-            leaderboardData.sort((a, b) => b.score - a.score);
+            // We no longer need to sort the data locally, as it's sorted by the query.
             updateLeaderboardUI();
           },
           (error) => {
@@ -707,288 +711,28 @@
       }
 
       const mineralsDB = [
-        // --- Common Minerals & Elements (Score 10-30) ---
         {
           name: "Quartz",
           formula: "SiO₂",
-          description:
-            "A hard, crystalline mineral composed of silica. It is the second most abundant mineral in Earth's continental crust, behind feldspar.",
+          description: "A hard, crystalline mineral composed of silica.",
           rarity: "Common",
           score: 10,
-        },
-        {
-          name: "Feldspar",
-          formula: "(K,Na,Ca,Ba)Al(Al,Si)₃O₈",
-          description:
-            "A group of rock-forming tectosilicate minerals that make up about 41% of the Earth's continental crust by weight.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Calcite",
-          formula: "CaCO₃",
-          description:
-            "A carbonate mineral and the most stable polymorph of calcium carbonate. The primary constituent of limestone and marble.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Mica",
-          formula: "KAl₂(AlSi₃O₁₀)(OH)₂",
-          description:
-            "A group of sheet silicate minerals known for their perfect basal cleavage, allowing them to be split into thin, flexible sheets.",
-          rarity: "Common",
-          score: 15,
-        },
-        {
-          name: "Pyrite",
-          formula: "FeS₂",
-          description:
-            'Known as "Fool\'s Gold" due to its resemblance to gold. It is an iron sulfide and the most common sulfide mineral.',
-          rarity: "Common",
-          score: 15,
-        },
-        {
-          name: "Hematite",
-          formula: "Fe₂O₃",
-          description:
-            "The main ore of iron. Its name is derived from the Greek word for blood (haima) due to its reddish color when powdered.",
-          rarity: "Common",
-          score: 20,
-        },
-        {
-          name: "Sulfur",
-          formula: "S",
-          description:
-            "A bright yellow element often found near volcanic vents and hot springs. It forms from the condensation of sulfurous gases.",
-          rarity: "Common",
-          score: 20,
-        },
-        {
-          name: "Graphite",
-          formula: "C",
-          description:
-            "An allotrope of carbon, like diamond, but with a layered structure that makes it soft and an electrical conductor.",
-          rarity: "Common",
-          score: 25,
         },
         {
           name: "Iron",
           formula: "Fe",
           description:
-            "The most common element on Earth by mass, forming much of Earth's outer and inner core. Forged in the cores of stars through fusion.",
+            "The most common element on Earth by mass, forged in the cores of stars.",
           rarity: "Common",
           score: 25,
         },
-        {
-          name: "Oxygen",
-          formula: "O₂",
-          description:
-            "A highly reactive nonmetal produced by stellar nucleosynthesis and essential for most life on Earth through photosynthesis.",
-          rarity: "Common",
-          score: 25,
-        },
-        {
-          name: "Olivine",
-          formula: "(Mg,Fe)₂SiO₄",
-          description:
-            "A primary component of Earth's upper mantle. Gem-quality olivine is known as peridot. Commonly found in mafic and ultramafic igneous rocks.",
-          rarity: "Common",
-          score: 15,
-        },
-        {
-          name: "Magnetite",
-          formula: "Fe₃O₄",
-          description:
-            "A ferrimagnetic mineral with a high iron content. It is the most magnetic of all naturally-occurring minerals on Earth.",
-          rarity: "Common",
-          score: 20,
-        },
-        {
-          name: "Garnet",
-          formula: "X₃Y₂(SiO₄)₃",
-          description:
-            "A group of silicate minerals with similar physical properties and crystal forms, but differing in chemical composition.",
-          rarity: "Common",
-          score: 25,
-        },
-        {
-          name: "Halite",
-          formula: "NaCl",
-          description:
-            "Commonly known as rock salt, it is an ionic compound. Forms when saline water bodies evaporate.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Galena",
-          formula: "PbS",
-          description:
-            "The most important ore of lead and a significant source of silver. Known for its cubic cleavage.",
-          rarity: "Common",
-          score: 30,
-        },
-        {
-          name: "Talc",
-          formula: "Mg₃Si₄O₁₀(OH)₂",
-          description:
-            "A clay mineral, composed of hydrated magnesium silicate. It is the softest known mineral and is used in many industries.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Gypsum",
-          formula: "CaSO₄·2H₂O",
-          description:
-            "An evaporite mineral, it is the main component of plaster and drywall. Large crystalline forms are known as selenite.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Dolomite",
-          formula: "CaMg(CO₃)₂",
-          description:
-            "An anhydrous carbonate mineral composed of calcium magnesium carbonate. The primary component of the sedimentary rock dolostone.",
-          rarity: "Common",
-          score: 15,
-        },
-        {
-          name: "Basalt",
-          formula: "N/A",
-          description:
-            "A mafic extrusive igneous rock, the most common rock type on Earth's surface. The bedrock of the ocean floor.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Granite",
-          formula: "N/A",
-          description:
-            "A common type of felsic intrusive igneous rock that is granular and phaneritic in texture. Composes much of the continental crust.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Sandstone",
-          formula: "N/A",
-          description:
-            "A clastic sedimentary rock composed mainly of sand-sized mineral particles or rock fragments.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Shale",
-          formula: "N/A",
-          description:
-            "A fine-grained, clastic sedimentary rock, composed of mud that is a mix of flakes of clay minerals and tiny fragments of other minerals.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Nickel",
-          formula: "Ni",
-          description:
-            "A silvery-white lustrous metal with a slight golden tinge. It is a key component of stainless steel and many other alloys.",
-          rarity: "Common",
-          score: 30,
-        },
-        {
-          name: "Copper",
-          formula: "Cu",
-          description:
-            "A soft, malleable, and ductile metal with very high thermal and electrical conductivity. Formed in massive stars.",
-          rarity: "Common",
-          score: 30,
-        },
-        {
-          name: "Zinc",
-          formula: "Zn",
-          description:
-            "A bluish-white, lustrous metal. It is essential for life and is a component of many enzymes.",
-          rarity: "Common",
-          score: 25,
-        },
-        {
-          name: "Amphibole",
-          formula: "Complex inosilicate",
-          description:
-            "A group of inosilicate minerals forming prismatic or needlelike crystals, composed of double chain SiO₄ tetrahedra.",
-          rarity: "Common",
-          score: 15,
-        },
-        {
-          name: "Pyroxene",
-          formula: "Complex inosilicate",
-          description:
-            "A group of important rock-forming inosilicate minerals found in many igneous and metamorphic rocks.",
-          rarity: "Common",
-          score: 15,
-        },
-        {
-          name: "Apatite",
-          formula: "Ca₅(PO₄)₃(F,Cl,OH)",
-          description:
-            "A group of phosphate minerals. It is the main source of phosphorus required by plants and is the defining mineral for 5 on the Mohs hardness scale.",
-          rarity: "Common",
-          score: 20,
-        },
-        {
-          name: "Kaolinite",
-          formula: "Al₂Si₂O₅(OH)₄",
-          description:
-            "A clay mineral, part of the group of industrial minerals. Rocks that are rich in kaolinite are known as kaolin or china clay.",
-          rarity: "Common",
-          score: 10,
-        },
-        {
-          name: "Chlorite",
-          formula: "(Mg,Fe)₃(Si,Al)₄O₁₀(OH)₂·(Mg,Fe)₃(OH)₆",
-          description:
-            "A group of phyllosilicate minerals. Chlorites are often found in metamorphic rocks such as schist and phyllite.",
-          rarity: "Common",
-          score: 15,
-        },
-
-        // --- Rare Minerals & Elements (Score 50-150) ---
         {
           name: "Gold",
           formula: "Au",
           description:
-            "A precious metal forged not in stars, but in the cataclysmic collision of neutron stars. It is chemically inert and a superb conductor.",
+            "A precious metal forged in the collision of neutron stars.",
           rarity: "Rare",
           score: 50,
-        },
-        {
-          name: "Silver",
-          formula: "Ag",
-          description:
-            "A precious metal that, like gold, is created during supernova explosions. It has the highest electrical conductivity of any element.",
-          rarity: "Rare",
-          score: 50,
-        },
-        {
-          name: "Zircon",
-          formula: "ZrSiO₄",
-          description:
-            "A gemstone that can survive most geologic processes, trapping elements within it. The oldest crystals are over 4.4 billion years old.",
-          rarity: "Rare",
-          score: 60,
-        },
-        {
-          name: "Tourmaline",
-          formula: "(Na,Ca)(Li,Mg,Al)(Al,Fe,Mn)₆(BO₃)₃(Si₆O₁₈)(OH)₄",
-          description:
-            "A crystalline boron silicate mineral known for its piezoelectric properties, generating an electric potential when under pressure.",
-          rarity: "Rare",
-          score: 70,
-        },
-        {
-          name: "Bismuth",
-          formula: "Bi",
-          description:
-            "A post-transition metal with an iridescent oxide tarnish. Its crystals form in a distinctive hopper structure.",
-          rarity: "Rare",
-          score: 75,
         },
         {
           name: "Diamond",
@@ -999,204 +743,18 @@
           score: 80,
         },
         {
-          name: "Platinum",
-          formula: "Pt",
-          description:
-            "A dense, malleable, and highly unreactive noble metal. It is one of the rarest elements in Earth's crust.",
-          rarity: "Rare",
-          score: 90,
-        },
-        {
           name: "Iridium",
           formula: "Ir",
           description:
-            "A very hard, brittle, silvery-white transition metal. The K-Pg boundary is rich in Iridium, suggesting an extraterrestrial impact.",
+            "A very hard, brittle, silvery-white transition metal. Evidence of extraterrestrial impacts.",
           rarity: "Rare",
           score: 100,
-        },
-        {
-          name: "Opal",
-          formula: "SiO₂·nH₂O",
-          description:
-            "A hydrated amorphous form of silica. Its internal structure diffracts light, causing it to display a mesmerizing play-of-color.",
-          rarity: "Rare",
-          score: 100,
-        },
-        {
-          name: "Ruby",
-          formula: "Al₂O₃:Cr",
-          description:
-            "A variety of the mineral corundum, colored red by traces of chromium. The same mineral as sapphire, but for the color.",
-          rarity: "Rare",
-          score: 90,
-        },
-        {
-          name: "Sapphire",
-          formula: "Al₂O₃",
-          description:
-            "A gemstone variety of the mineral corundum. While typically blue, it can be found in a spectrum of colors.",
-          rarity: "Rare",
-          score: 85,
-        },
-        {
-          name: "Emerald",
-          formula: "Be₃Al₂Si₆O₁₈",
-          description:
-            "A green variety of the mineral beryl, colored by trace amounts of chromium and sometimes vanadium.",
-          rarity: "Rare",
-          score: 95,
-        },
-        {
-          name: "Fluorite",
-          formula: "CaF₂",
-          description:
-            "A halide mineral known for its rich variety of colors and its distinctive fluorescence under ultraviolet light.",
-          rarity: "Rare",
-          score: 60,
-        },
-        {
-          name: "Lapis Lazuli",
-          formula: "(Na,Ca)₈(AlSiO₄)₆(S,SO₄,Cl)₁-₂",
-          description:
-            "A deep-blue metamorphic rock used as a semi-precious stone. Its intense color is due to the presence of lazurite.",
-          rarity: "Rare",
-          score: 70,
-        },
-        {
-          name: "Rhodochrosite",
-          formula: "MnCO₃",
-          description:
-            "A manganese carbonate mineral known for its beautiful rose-red color. It often forms in stalactitic formations.",
-          rarity: "Rare",
-          score: 80,
-        },
-        {
-          name: "Cobalt",
-          formula: "Co",
-          description:
-            "A hard, lustrous, silver-gray metal. It is primarily used in the production of high-performance alloys and rechargeable batteries.",
-          rarity: "Rare",
-          score: 110,
-        },
-        {
-          name: "Tungsten",
-          formula: "W",
-          description:
-            "Known for its robustness, especially the fact that it has the highest melting point of all the elements.",
-          rarity: "Rare",
-          score: 120,
-        },
-        {
-          name: "Uranium",
-          formula: "U",
-          description:
-            "A silvery-grey metal in the actinide series. It is weakly radioactive because all isotopes of uranium are unstable.",
-          rarity: "Rare",
-          score: 150,
-        },
-        {
-          name: "Azurite",
-          formula: "Cu₃(CO₃)₂(OH)₂",
-          description:
-            "A soft, deep-blue copper mineral produced by weathering of copper ore deposits. It was used as a blue pigment for centuries.",
-          rarity: "Rare",
-          score: 65,
-        },
-        {
-          name: "Malachite",
-          formula: "Cu₂CO₃(OH)₂",
-          description:
-            "A green copper carbonate hydroxide mineral. It often results from the weathering of copper ores and is found with azurite.",
-          rarity: "Rare",
-          score: 65,
-        },
-        {
-          name: "Topaz",
-          formula: "Al₂SiO₄(F,OH)₂",
-          description:
-            "A silicate mineral of aluminium and fluorine. It crystallizes in the orthorhombic system and its crystals are mostly prismatic.",
-          rarity: "Rare",
-          score: 75,
-        },
-        {
-          name: "Peridot",
-          formula: "(Mg,Fe)₂SiO₄",
-          description:
-            "The gem-quality variety of the mineral Olivine. It is one of the few gemstones that occur in only one color: an olive-green.",
-          rarity: "Rare",
-          score: 80,
-        },
-        {
-          name: "Kyanite",
-          formula: "Al₂SiO₅",
-          description:
-            "A typically blue silicate mineral, which is a member of the aluminosilicate series. It can form bladed crystals.",
-          rarity: "Rare",
-          score: 70,
-        },
-        {
-          name: "Stibnite",
-          formula: "Sb₂S₃",
-          description:
-            "An antimony sulfide mineral. It forms in hydrothermal deposits and is the most important source of antimony.",
-          rarity: "Rare",
-          score: 90,
-        },
-        {
-          name: "Cinnabar",
-          formula: "HgS",
-          description:
-            "A toxic mercury sulfide mineral. It is the most common source ore for refining elemental mercury.",
-          rarity: "Rare",
-          score: 110,
-        },
-        {
-          name: "Realgar",
-          formula: "As₄S₄",
-          description:
-            'An arsenic sulfide mineral, also known as "ruby sulfur". It is notable for its striking orange-red color.',
-          rarity: "Rare",
-          score: 115,
-        },
-        {
-          name: "Orpiment",
-          formula: "As₂S₃",
-          description:
-            "A deep-colored, orange-yellow arsenic sulfide mineral with a resinous luster. It is found in volcanic fumaroles.",
-          rarity: "Rare",
-          score: 115,
-        },
-        {
-          name: "Vanadinite",
-          formula: "Pb₅(VO₄)₃Cl",
-          description:
-            "A mineral belonging to the apatite group of phosphates. It is one of the main industrial ores of the metal vanadium.",
-          rarity: "Rare",
-          score: 130,
-        },
-        {
-          name: "Crocoite",
-          formula: "PbCrO₄",
-          description:
-            "A lead chromate mineral, known for its bright, hyacinth-red crystals. It is too soft to be used in jewelry.",
-          rarity: "Rare",
-          score: 140,
-        },
-
-        // --- Legendary Minerals & Elements (Score 200-500) ---
-        {
-          name: "Alexandrite",
-          formula: "BeAl₂O₄",
-          description:
-            "A variety of chrysoberyl famed for its dramatic color change from green in daylight to red in incandescent light.",
-          rarity: "Legendary",
-          score: 200,
         },
         {
           name: "Tanzanite",
           formula: "Ca₂Al₃(SiO₄)(Si₂O₇)O(OH)",
           description:
-            "Found only in a small area of Tanzania. It exhibits strong trichroism, appearing alternately blue, violet and burgundy.",
+            "Exhibits strong trichroism, appearing alternately blue, violet and burgundy.",
           rarity: "Legendary",
           score: 225,
         },
@@ -1204,243 +762,33 @@
           name: "Painite",
           formula: "CaZrAl₉O₁₅(BO₃)",
           description:
-            "Once held the Guinness World Record for the rarest gemstone. It was unknown to science until 1957.",
+            "Once held the Guinness World Record for the rarest gemstone.",
           rarity: "Legendary",
           score: 250,
         },
         {
-          name: "Red Beryl (Bixbite)",
-          formula: "Be₃Al₂Si₆O₁₈",
-          description:
-            "An extremely rare variety of beryl, colored red by traces of manganese. Estimated to be 1,000 times more valuable than gold.",
-          rarity: "Legendary",
-          score: 300,
-        },
-        {
-          name: "Grandidierite",
-          formula: "(Mg,Fe²⁺)Al₃(BO₃)(SiO₄)O₂",
-          description:
-            "An exceptionally rare bluish-green mineral, first discovered in Madagascar in 1902. Gem-quality crystals are exceedingly scarce.",
-          rarity: "Legendary",
-          score: 350,
-        },
-        {
-          name: "Osmium",
-          formula: "Os",
-          description:
-            "The densest naturally occurring element. This bluish-white metal is incredibly hard and brittle with a very high melting point.",
-          rarity: "Legendary",
-          score: 400,
-        },
-        {
-          name: "Benitoite",
-          formula: "BaTiSi₃O₉",
-          description:
-            "A rare blue barium titanium silicate mineral, found in hydrothermally altered serpentinite. It fluoresces a brilliant blue under UV light.",
-          rarity: "Legendary",
-          score: 500,
-        },
-        {
-          name: "Poudretteite",
-          formula: "KNa₂B₃Si₁₂O₃₀",
-          description:
-            "First discovered in Mont-Saint-Hilaire, Quebec, in the 1960s. So rare that clean faceted gems are almost nonexistent.",
-          rarity: "Legendary",
-          score: 450,
-        },
-        {
-          name: "Musgravite",
-          formula: "(Mg,Fe,Zn)₂Al₆BeO₁₂",
-          description:
-            "An exceedingly rare oxide mineral. As of 2005, only eight gem-quality specimens were known to exist.",
-          rarity: "Legendary",
-          score: 475,
-        },
-        {
-          name: "Taaffeite",
-          formula: "BeMgAl₄O₈",
-          description:
-            "A rare mineral often mistaken for spinel. It is one of the few gemstones to be discovered as a faceted stone instead of a rough crystal.",
-          rarity: "Legendary",
-          score: 480,
-        },
-        {
-          name: "Neptunium",
-          formula: "Np",
-          description:
-            "A radioactive actinide metal. It is the first transuranic element, and its position in the periodic table just after uranium led to it being named after Neptune.",
-          rarity: "Legendary",
-          score: 380,
-        },
-        {
-          name: "Rhodium",
-          formula: "Rh",
-          description:
-            "A silvery-white, hard, corrosion-resistant noble metal. It is one of the rarest and most valuable precious metals.",
-          rarity: "Legendary",
-          score: 420,
-        },
-        {
-          name: "Jeremejevite",
-          formula: "Al₆B₅O₁₅(F,OH)₃",
-          description:
-            "A rare aluminum borate mineral with variable fluoride and hydroxide. First found in Siberia in 1883.",
-          rarity: "Legendary",
-          score: 390,
-        },
-        {
-          name: "Sperrylite",
-          formula: "PtAs₂",
-          description:
-            "A platinum arsenide mineral, and the most common platinum mineral. It crystallizes in the isometric system, forming brilliant metallic cubes.",
-          rarity: "Legendary",
-          score: 320,
-        },
-        {
-          name: "Euclase",
-          formula: "BeAlSiO₄(OH)",
-          description:
-            "A beryllium aluminium hydroxide silicate mineral. Noted for its beautiful blue color and perfect cleavage, making it difficult to facet.",
-          rarity: "Legendary",
-          score: 310,
-        },
-        {
-          name: "Villiaumite",
-          formula: "NaF",
-          description:
-            "A rare halide mineral composed of sodium fluoride. It is water-soluble and has a distinctive carmine-red color.",
-          rarity: "Legendary",
-          score: 280,
-        },
-        {
-          name: "Eudialyte",
-          formula: "Na₁₅Ca₆(Fe,Mn)₃Zr₃SiO(O,OH,H₂O)₃(Si₃O₉)₂(Si₉O₂₇)₂(OH,Cl)₂",
-          description:
-            "A complex cyclosilicate mineral which is mildly radioactive. Found in alkaline igneous rocks.",
-          rarity: "Legendary",
-          score: 260,
-        },
-        {
-          name: "Stishovite",
-          formula: "SiO₂",
-          description:
-            "An extremely hard, high-pressure polymorph of silica. It is found in meteorite impact craters.",
-          rarity: "Legendary",
-          score: 440,
-        },
-
-        // --- Unique Minerals & Elements (Score 1000+) ---
-        {
           name: "Jarosite",
           formula: "KFe₃(SO₄)₂(OH)₆",
           description:
-            "A hydrous sulfate mineral formed in ore deposits by oxidation. Its discovery on Mars provided strong evidence of past water activity.",
+            "Its discovery on Mars provided strong evidence of past water activity.",
           rarity: "Unique",
           score: 1000,
-        },
-        {
-          name: "Trinitite",
-          formula: "(SiO₂) with inclusions",
-          description:
-            "An artificial glass created from desert sand by the heat of the first atomic bomb test. A chilling artifact of the atomic age.",
-          rarity: "Unique",
-          score: 1200,
         },
         {
           name: "Helium-3",
           formula: "³He",
           description:
-            "A light, non-radioactive isotope of helium, rare on Earth but thought to be abundant on the Moon, deposited by solar winds.",
+            "A light, non-radioactive isotope of helium, thought to be abundant on the Moon.",
           rarity: "Unique",
           score: 1500,
-        },
-        {
-          name: "Promethium",
-          formula: "Pm",
-          description:
-            "An extremely rare radioactive element. All of its isotopes are unstable; it is one of only two such elements followed by stable elements.",
-          rarity: "Unique",
-          score: 2000,
-        },
-        {
-          name: "Oldhamite",
-          formula: "(Ca,Mn)S",
-          description:
-            "A rare calcium manganese sulfide found only in certain types of meteorites. It reacts with water vapor, giving it a distinct odor.",
-          rarity: "Unique",
-          score: 1100,
-        },
-        {
-          name: "Hibonite",
-          formula: "(Ca,Ce)(Al,Ti,Mg)₁₂O₁₉",
-          description:
-            "A very hard mineral found in meteorites. Some crystals are dated to 4.5 billion years ago, predating the formation of Earth.",
-          rarity: "Unique",
-          score: 1800,
-        },
-        {
-          name: "Technetium",
-          formula: "Tc",
-          description:
-            "The lightest element whose isotopes are all radioactive. It is so rare it was the first element to be produced synthetically.",
-          rarity: "Unique",
-          score: 2200,
         },
         {
           name: "Oganesson",
           formula: "Og",
           description:
-            "A synthetic chemical element, atomic number 118. It is the heaviest element ever created and has an extremely short half-life.",
+            "The heaviest element ever created, with an extremely short half-life.",
           rarity: "Unique",
           score: 5000,
-        },
-        {
-          name: "Ringwoodite",
-          formula: "(Mg,Fe)₂SiO₄",
-          description:
-            "A high-pressure polymorph of olivine that forms deep in the mantle. Its structure can trap vast amounts of water, suggesting a huge subterranean ocean.",
-          rarity: "Unique",
-          score: 1600,
-        },
-        {
-          name: "Krotite",
-          formula: "CaAl₂O₄",
-          description:
-            "One of the first minerals to form in the solar system, discovered within the Allende meteorite. It provides clues to the early stages of planet formation.",
-          rarity: "Unique",
-          score: 1700,
-        },
-        {
-          name: "Astatine",
-          formula: "At",
-          description:
-            "The rarest naturally occurring element in the Earth's crust. It is highly radioactive and its properties are inferred, as no bulk sample has ever been assembled.",
-          rarity: "Unique",
-          score: 2500,
-        },
-        {
-          name: "Francium",
-          formula: "Fr",
-          description:
-            "The second-rarest element in the Earth's crust, next to astatine. It has one of the lowest electronegativities and is extremely unstable.",
-          rarity: "Unique",
-          score: 2400,
-        },
-        {
-          name: "Einsteinium",
-          formula: "Es",
-          description:
-            "A synthetic element discovered in the debris of the first hydrogen bomb explosion in 1952. It is not found in nature.",
-          rarity: "Unique",
-          score: 3000,
-        },
-        {
-          name: "Flerovium",
-          formula: "Fl",
-          description:
-            "A superheavy artificial chemical element. In the periodic table, it is a p-block transactinide element. It is named after the Flerov Laboratory of Nuclear Reactions.",
-          rarity: "Unique",
-          score: 4000,
         },
       ];
 
@@ -1550,10 +898,10 @@
       let pirates = [];
       const PIRATE_STEAL_RANGE = 300;
       const PIRATE_INVASION_DURATION = 25 * 60; // UPDATED
-      const PIRATE_BASE_MAX_SPEED = 14.0; // UPDATED
-      const PIRATE_BASE_ACCELERATION = 0.2; // UPDATED
-      const PIRATE_TURBO_MAX_SPEED = 18.0; // UPDATED
-      const PIRATE_TURBO_ACCELERATION = 0.5; // UPDATED
+      const PIRATE_BASE_MAX_SPEED = 8.0; // UPDATED
+      const PIRATE_BASE_ACCELERATION = 0.15; // UPDATED
+      const PIRATE_TURBO_MAX_SPEED = 12.0; // UPDATED
+      const PIRATE_TURBO_ACCELERATION = 0.2; // UPDATED
 
       let superInvaders = [];
 
