@@ -327,7 +327,7 @@
       #steal-progress-bar-container {
         display: none;
         position: absolute;
-        top: 80px;
+        top: 120px;
         left: 50%;
         transform: translateX(-50%);
         width: 300px;
@@ -340,6 +340,19 @@
         width: 0%;
         height: 100%;
         background: #ff0000;
+      }
+
+      /* NEW: Invasion Timer */
+      #invasion-timer {
+        display: none;
+        position: absolute;
+        top: 75px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 1.5em;
+        color: #ff0000;
+        text-shadow: 2px 2px #000;
+        z-index: 16;
       }
 
       #touch-controls {
@@ -472,6 +485,7 @@
       <p id="discovery-close-prompt">Press 'E' to close</p>
     </div>
     <div id="pirate-warning">INVASION!</div>
+    <div id="invasion-timer"></div>
     <div id="steal-progress-bar-container">
       <div id="steal-progress-bar"></div>
     </div>
@@ -544,6 +558,7 @@
       const restartButton = document.getElementById("restartButton");
       const shipCards = document.querySelectorAll(".ship-card");
       const pirateWarning = document.getElementById("pirate-warning");
+      const invasionTimer = document.getElementById("invasion-timer"); // NEW
       const stealBarContainer = document.getElementById(
         "steal-progress-bar-container"
       );
@@ -783,7 +798,7 @@
       const radarAudio = new Audio("Radar.mp3");
       const loopAudio = new Audio("loop.mp3");
       const alarmAudio = new Audio("alarm.mp3");
-      const supAudio = new Audio("Sup.mp3"); // NEW
+      const supAudio = new Audio("Sup.mp3");
 
       let assetsToLoad =
         planetSpriteSheetSources.length +
@@ -835,11 +850,11 @@
 
       let pirates = [];
       const PIRATE_STEAL_RANGE = 300;
-      const PIRATE_INVASION_DURATION = 20 * 60;
-      const PIRATE_BASE_MAX_SPEED = 7.0;
-      const PIRATE_BASE_ACCELERATION = 0.1;
-      const PIRATE_TURBO_MAX_SPEED = 9.5;
-      const PIRATE_TURBO_ACCELERATION = 0.15;
+      const PIRATE_INVASION_DURATION = 25 * 60; // UPDATED
+      const PIRATE_BASE_MAX_SPEED = 8.0; // UPDATED
+      const PIRATE_BASE_ACCELERATION = 0.15; // UPDATED
+      const PIRATE_TURBO_MAX_SPEED = 12.0; // UPDATED
+      const PIRATE_TURBO_ACCELERATION = 0.2; // UPDATED
 
       let superInvaders = [];
 
@@ -942,12 +957,17 @@
         });
         alarmAudio.play().catch((e) => console.warn("Alarm could not play"));
         pirateWarning.style.display = "block";
+        invasionTimer.style.display = "block";
       }
 
       function updatePirates() {
         if (pirates.length === 0) return;
 
         let isPlayerBeingStolenFrom = false;
+
+        const firstPirate = pirates[0];
+        const timeLeft = Math.ceil(firstPirate.timer / 60);
+        invasionTimer.textContent = `${timeLeft}s`;
 
         for (let i = pirates.length - 1; i >= 0; i--) {
           const pirate = pirates[i];
@@ -1024,6 +1044,7 @@
         if (pirates.length === 0) {
           pirateWarning.style.display = "none";
           stealBarContainer.style.display = "none";
+          invasionTimer.style.display = "none";
         }
       }
 
@@ -1032,7 +1053,7 @@
 
         supAudio
           .play()
-          .catch((e) => console.warn("Super invader sound failed to play")); // NEW
+          .catch((e) => console.warn("Super invader sound failed to play"));
 
         const edge = Math.floor(Math.random() * 4);
         let startX, startY, endX, endY;
@@ -1070,7 +1091,7 @@
           x: startX + camera.x,
           y: startY + camera.y,
           angle: angle,
-          speed: (15 + Math.random() * 5) * 1.5, // UPDATED
+          speed: (15 + Math.random() * 5) * 1.5,
           image:
             superInvaderImages[
               Math.floor(Math.random() * superInvaderImages.length)
@@ -1224,6 +1245,7 @@
         station = null;
         stealProgress = 0;
         pirateWarning.style.display = "none";
+        invasionTimer.style.display = "none";
         stealBarContainer.style.display = "none";
         toggleDiscoveryPanel(false);
       }
@@ -1342,7 +1364,8 @@
           updatePirates();
           updateSuperInvaders();
 
-          if (Math.random() < 0.001) {
+          if (Math.random() < 0.0002) {
+            // UPDATED: Reduced spawn rate
             spawnSuperInvader();
           }
 
