@@ -35,7 +35,7 @@
         overflow: hidden;
       }
 
-      /* CRT Overlay: Adjusted for less blur */
+      /* CRT Overlay: Keep the scanline effect but reduce overall visual noise */
       #crt-overlay {
         position: absolute;
         top: 0;
@@ -54,12 +54,12 @@
         height: 100%;
         background: repeating-linear-gradient(
           0deg,
-          rgba(0, 0, 0, 0.3) 0px,
-          /* Slightly lower opacity */ rgba(0, 0, 0, 0.3) 1px,
+          rgba(0, 0, 0, 0.2) 0px,
+          /* Reduced scanline density */ rgba(0, 0, 0, 0.2) 1px,
           transparent 1px,
           transparent 2px
         );
-        opacity: 0.8; /* Reduced overall opacity */
+        opacity: 0.7;
       }
       #crt-overlay::after {
         content: "";
@@ -71,7 +71,7 @@
         background: radial-gradient(
           ellipse at center,
           rgba(0, 0, 0, 0) 50%,
-          rgba(0, 0, 0, 0.8) 100% /* Slightly softer vignette */
+          rgba(0, 0, 0, 0.7) 100%
         );
         animation: flicker 0.1s infinite;
       }
@@ -87,39 +87,58 @@
         }
       }
 
-      /* Game Screen Styling - Black Background */
+      /* UPDATED: Scrolling background animation for the new image */
+      @keyframes scroll-background {
+        from {
+          background-position: 0% 0;
+        }
+        to {
+          background-position: 100% 0; /* Scrolls from left to right */
+        }
+      }
+
+      /* Game Screen Styling - Atmospheric Background */
       .game-screen {
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: #000; /* Pure black background for clarity */
-        background-image: none; /* Removed background image */
+        background-color: transparent;
+        /* NEW: Set new background image and enable scrolling */
+        background-image: url("https://images6.alphacoders.com/885/885542.png");
+        background-size: auto 100%; /* Cover height, let width scroll */
+        background-position: 0% 0;
+        background-attachment: fixed;
+        animation: scroll-background 60s linear infinite; /* Apply scrolling */
         z-index: 20;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         text-align: center;
-        color: #33ff33; /* Cyber Green */
+        color: #00ffff; /* Default Cyan text for menu elements */
+        /* Subtle haze effect over background */
+        background-blend-mode: overlay;
+        background-color: rgba(0, 0, 0, 0.6);
       }
 
-      /* Title H1 - Focused on Green/Cyan high contrast */
+      /* Title H1 - Focused on Neon Glow & Clarity */
       .game-screen h1,
       .game-screen h2 {
-        text-shadow: 1px 1px #000;
+        text-shadow: 2px 2px #000;
+        margin-bottom: 20px;
       }
       .game-screen h1 {
         font-size: 3.5em;
-        /* Keep Rainbow text for 'Super Invader' */
+        /* Rainbow text remains */
         background: linear-gradient(
           90deg,
-          #ff3333,
-          #ffff33,
-          #33ff33,
-          #33ffff,
-          #3333ff
+          #ff4444,
+          /* Brighter Red */ #ffdd44,
+          /* Brighter Yellow */ #44ff44,
+          /* Brighter Green */ #44ffff,
+          /* Cyan */ #4444ff /* Blue */
         );
         background-size: 200% 100%;
         -webkit-background-clip: text;
@@ -127,8 +146,11 @@
         -webkit-text-fill-color: transparent;
         animation: rainbow-text-animation 5s linear infinite;
 
-        /* Cyan text-shadow for a neon glow effect */
-        text-shadow: 0 0 10px #00ffff, 0 0 15px #00ffff;
+        /* UPDATED: Multi-layered text-shadow for "Glowy Minerals" effect */
+        text-shadow: 1px 1px 0 #000, 0 0 5px #00ffff,
+          /* Base Cyan Glow (Clearer) */ 0 0 10px #ff00ff,
+          /* Pink/Magenta secondary glow (Minerals) */ 0 0 20px
+            rgba(0, 255, 255, 0.8); /* Strong outer halo */
       }
       @keyframes rainbow-text-animation {
         0% {
@@ -141,47 +163,53 @@
 
       .game-screen h2 {
         font-size: 2em;
-        color: #00ffff; /* Sharp Cyber Cyan */
-        text-shadow: 0 0 5px #00ffff;
+        color: #33ff33; /* Cyber Green for headings */
+        text-shadow: 0 0 8px #33ff33;
       }
 
       /* Instructions Styling */
       #main-menu-screen p.instructions {
         font-size: 0.8em;
-        margin-top: 30px;
-        margin-bottom: 30px;
-        color: #33ff33; /* Cyber Green */
+        margin-top: 20px;
+        margin-bottom: 40px;
+        color: #00ffff; /* Cyan Text */
         text-shadow: none;
-        padding: 10px;
-        border: 1px dashed #33ff33; /* Cyber Green border */
-        max-width: 80%;
+        padding: 15px;
+        /* Softer border blending into the background */
+        border: 1px solid rgba(0, 255, 255, 0.4);
+        max-width: 90%;
         line-height: 1.5;
-        background-color: rgba(0, 0, 0, 0.85);
+        background-color: rgba(0, 0, 0, 0.5); /* Subtle dark container */
+        box-shadow: inset 0 0 5px rgba(0, 255, 255, 0.2);
       }
 
-      /* Buttons - High Contrast Retro Style */
+      /* Buttons - Modern Indie Neon Style */
       .menu-button {
         font-family: "Press Start 2P", cursive;
-        font-size: 1.2em;
-        padding: 10px 20px;
-        background-color: transparent;
-        color: #33ff33; /* Cyber Green text */
-        border: 2px solid #33ff33; /* Cyber Green border */
+        font-size: 1.3em;
+        padding: 12px 24px;
+        background-color: rgba(0, 0, 0, 0.4); /* Slightly visible background */
+        color: #33ff33; /* Default Cyber Green Text */
+        border: 1px solid #33ff33; /* Subtle Green Border */
         cursor: pointer;
-        margin: 8px 10px;
-        text-shadow: 1px 1px #000;
-        transition: background-color 0.1s;
+        margin: 10px;
+        text-shadow: none;
+        transition: all 0.15s ease-in-out;
+        box-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
       }
       .menu-button:hover {
-        background-color: #00ffff; /* Cyan hover effect */
-        color: #000;
+        background-color: rgba(0, 255, 255, 0.1); /* Cyan fill on hover */
+        color: #00ffff; /* Cyan text on hover */
         border-color: #00ffff;
+        /* Stronger neon glow on hover */
+        box-shadow: 0 0 15px #00ffff, 0 0 25px rgba(0, 255, 255, 0.8);
       }
       .menu-button:disabled {
-        background-color: transparent;
+        background-color: rgba(0, 0, 0, 0.4);
         color: #555;
         border-color: #555;
         cursor: not-allowed;
+        box-shadow: none;
       }
 
       #ship-select-container {
@@ -193,17 +221,18 @@
 
       /* Ship Card Styling adjustments */
       .ship-card {
-        border: 2px solid #00ffff; /* Cyan border */
+        border: 2px solid #00ffff;
         padding: 15px;
         cursor: pointer;
         transition: all 0.2s ease-in-out;
         background: rgba(0, 0, 0, 0.7);
-        color: white;
+        color: #33ff33; /* Ship text in green */
       }
       .ship-card:hover {
-        border-color: #33ff33; /* Green hover border */
-        box-shadow: 0 0 10px #33ff33; /* Green glow */
+        border-color: #33ff33;
+        box-shadow: 0 0 10px #33ff33;
         transform: scale(1.05);
+        background: rgba(0, 0, 0, 0.85);
       }
       .ship-card img {
         width: 96px;
@@ -234,27 +263,28 @@
         height: 100%;
         overflow: auto;
         background-color: rgba(0, 0, 0, 0.8);
-        color: #33ff33; /* Cyber Green */
+        color: #00ffff; /* Modal default color: Cyan */
         align-items: center;
         justify-content: center;
       }
       .modal-content {
         background: rgba(0, 0, 0, 0.9);
-        border: 2px solid #33ff33; /* Green Modal Border */
+        border: 2px solid #00ffff;
         padding: 20px;
         width: 90%;
         max-width: 600px;
         text-align: center;
+        box-shadow: 0 0 10px #00ffff;
       }
       .modal-content h2 {
-        color: #00ffff;
-        text-shadow: 0 0 5px #00ffff;
+        color: #33ff33;
+        text-shadow: 0 0 5px #33ff33;
       }
       .modal-content input {
         font-family: "Press Start 2P", cursive;
         background: #000;
-        border: 1px solid #33ff33; /* Green Input Border */
-        color: #33ff33;
+        border: 1px solid #33ff33;
+        color: #00ffff; /* Input text in Cyan */
         padding: 10px;
         font-size: 1em;
         margin: 10px 0;
@@ -272,7 +302,7 @@
         display: flex;
         justify-content: space-between;
         padding: 8px;
-        border-bottom: 1px solid #33ff33;
+        border-bottom: 1px solid rgba(0, 255, 255, 0.3); /* Subtle divider */
       }
       #leaderboard-list li span:first-child {
         margin-right: 20px;
@@ -421,6 +451,30 @@
       #rank-notification-panel p {
         font-size: 1em;
         margin: 10px 0;
+      }
+
+      /* NEW: Intro Message Panel Styling */
+      #intro-message-panel {
+        display: none;
+        position: absolute;
+        top: 30%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 600px;
+        padding: 25px;
+        background: rgba(0, 0, 0, 0.95);
+        /* UPDATED: Border and shadow changed to Cyan */
+        border: 4px solid #00ffff;
+        box-shadow: 0 0 25px #00ffff, inset 0 0 10px #00ffff;
+        color: #00ffff;
+        text-align: center;
+        z-index: 100; /* Highest z-index */
+      }
+      #intro-message-panel p {
+        font-size: 1em;
+        margin: 0;
+        line-height: 1.5;
       }
 
       #touch-controls {
@@ -578,10 +632,25 @@
       <div id="steal-progress-bar"></div>
     </div>
     <div id="dock-prompt">Press 'E' to Dock</div>
+
     <div id="rank-notification-panel">
       <h2>RANK UP!</h2>
       <p>Congratulations, Pilot!</p>
       <p>You are now a <span id="new-rank-name"></span></p>
+    </div>
+
+    <div id="intro-message-panel">
+      <p>**INCOMING TRANSMISSION**</p>
+      <p style="color: #ff00ff; margin-top: 15px">
+        Pilot. This galaxy holds more than just minerals and pirates. There are
+        coordinates waiting to be solved.
+      </p>
+      <p style="color: #33ff33; margin-top: 10px">
+        Succeed, and perhaps our paths will cross...
+      </p>
+      <p style="font-size: 0.7em; color: #888; margin-top: 20px">
+        (Transmission lost)
+      </p>
     </div>
 
     <div id="leaderboard-modal" class="modal">
@@ -660,6 +729,7 @@
         "rank-notification-panel"
       );
       const newRankNameSpan = document.getElementById("new-rank-name");
+      const introMessagePanel = document.getElementById("intro-message-panel");
 
       const pirateWarning = document.getElementById("pirate-warning");
       const invasionTimer = document.getElementById("invasion-timer");
@@ -841,6 +911,14 @@
         setTimeout(() => {
           rankNotificationPanel.style.display = "none";
         }, 3000);
+      }
+
+      // NEW: Function to show the mysterious intro message
+      function showIntroMessage() {
+        introMessagePanel.style.display = "block";
+        setTimeout(() => {
+          introMessagePanel.style.display = "none";
+        }, 6000); // Display for 6 seconds
       }
 
       const mineralsDB = [
@@ -1470,6 +1548,7 @@
           .play()
           .catch((e) => console.warn("Background audio auto-play failed."));
 
+        showIntroMessage(); // NEW: Display mysterious message
         gameLoop();
       }
 
