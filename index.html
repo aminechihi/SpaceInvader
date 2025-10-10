@@ -2057,8 +2057,8 @@
                 const dx = touch.clientX - centerX;
                 const dy = touch.clientY - centerY;
 
-                // Calculate new player angle based on joystick direction (mobile only)
-                player.angle = Math.atan2(dy, dx) + Math.PI / 2;
+                // FIX: Changed + Math.PI / 2 to - Math.PI / 2 to correct the rotation offset.
+                player.angle = Math.atan2(dy, dx) - Math.PI / 2;
 
                 // Clamp knob position
                 const dist = Math.sqrt(dx * dx + dy * dy);
