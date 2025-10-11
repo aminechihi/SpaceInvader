@@ -713,7 +713,7 @@
         doc,
         deleteDoc,
         setDoc,
-        increment,
+        increment, // Imported for atomic HP decrement
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
       // --- SETUP ---
@@ -810,52 +810,59 @@
         return collection(db, `artifacts/${appId}/public/data/live_players`);
       }
 
+      // Track last shot time locally for opponents to spawn projectiles
+      let lastOpponentShots = {};
+
       function setupOpponentListener() {
         const livePlayersCol = getLivePlayersCollection();
         const q = query(livePlayersCol);
-        const now = Date.now();
 
         onSnapshot(q, (snapshot) => {
           livePlayers = [];
+          const currentTime = Date.now();
+          const cutoffTime = currentTime - AFK_TIMEOUT;
 
           snapshot.forEach((doc) => {
             const data = doc.data();
 
-            // NEW: AFK/Timeout Filter (Server-side AFK)
-            if (now - data.timestamp > AFK_TIMEOUT) {
-              // OPTIONAL: Delete old documents here if you have write access and want quick clean-up
-              // deleteDoc(doc(db, `artifacts/${appId}/public/data/live_players/${doc.id}`));
-              return; // Skip drawing this AFK player
+            // 1. Skip if the document is the local player
+            if (doc.id === player.uid) {
+              return;
             }
 
-            if (doc.id !== player.uid) {
-              // Exclude the local player
-              livePlayers.push({ id: doc.id, ...data });
+            // 2. Filter out AFK players (older than 60 seconds) AND players with 0 HP
+            if (data.timestamp < cutoffTime || data.hp <= 0) {
+              // This player is AFK or Dead and will not be drawn
+              return;
+            }
 
-              // NEW: Check if the opponent just shot
-              const lastShot = lastOpponentShots[doc.id] || 0;
-              if (
-                data.lastShotTime &&
-                data.lastShotTime > lastShot &&
-                now - data.lastShotTime < 1000
-              ) {
-                // Spawn a projectile locally based on opponent's state
-                opponentProjectiles.push({
-                  x: data.x,
-                  y: data.y,
-                  radius: PROJECTILE_RADIUS,
-                  angle: data.lastShotAngle,
-                  speed: OPPONENT_PROJECTILE_SPEED,
-                  damage: PROJECTILE_DAMAGE,
-                  velX:
-                    OPPONENT_PROJECTILE_SPEED * Math.cos(data.lastShotAngle),
-                  velY:
-                    OPPONENT_PROJECTILE_SPEED * Math.sin(data.lastShotAngle),
-                });
-                lastOpponentShots[doc.id] = data.lastShotTime;
-              }
+            // 3. Add to live players list
+            livePlayers.push({ id: doc.id, ...data });
+
+            // NEW: Check if the opponent just shot
+            const lastShot = lastOpponentShots[doc.id] || 0;
+            if (
+              data.lastShotTime &&
+              data.lastShotTime > lastShot &&
+              currentTime - data.lastShotTime < 1000
+            ) {
+              // Spawn a projectile locally based on opponent's state
+              opponentProjectiles.push({
+                x: data.x,
+                y: data.y,
+                radius: PROJECTILE_RADIUS,
+                angle: data.lastShotAngle,
+                speed: OPPONENT_PROJECTILE_SPEED,
+                damage: PROJECTILE_DAMAGE,
+                velX: OPPONENT_PROJECTILE_SPEED * Math.cos(data.lastShotAngle),
+                velY: OPPONENT_PROJECTILE_SPEED * Math.sin(data.lastShotAngle),
+              });
+              lastOpponentShots[doc.id] = data.lastShotTime;
             }
           });
+          console.log(
+            `[Lobby Sync] Found ${livePlayers.length} active opponents.`
+          );
         });
       }
 
