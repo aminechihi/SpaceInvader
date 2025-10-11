@@ -840,6 +840,7 @@
           name: player.name,
           score: score,
           shipId: player.shipId,
+          hp: player.hp, // NEW: Sync local player HP
           timestamp: Date.now(),
         };
 
@@ -1197,12 +1198,18 @@
         fireRate: 15, // Shots per second, higher number is slower rate.
         fireTimer: 0,
         uid: null, // Initialized later in initFirebase
+        hp: 100, // NEW: Player Health
+        isInvulnerable: false, // NEW: Shield state
+        invulnerabilityTimer: 0, // NEW: Shield duration timer (in frames)
       };
 
       const PROJECTILE_SPEED = 30; // UPDATED: Increased speed
       const PROJECTILE_RADIUS = 3;
       const PROJECTILE_DAMAGE = 1;
-      let projectiles = []; // NEW: Array to hold active projectiles
+      let projectiles = []; // Array to hold active projectiles (yours and opponents')
+
+      // Projectiles fired by opponents, but tracked locally for quick collision checks
+      let opponentProjectiles = [];
 
       const REPULSION_RANGE = 150;
       const REPULSION_STRENGTH = 0.5;
@@ -1337,6 +1344,13 @@
         const PIRATE_TURBO_ACCELERATION =
           INITIAL_PIRATE_TURBO_ACCELERATION * basePirateSpeedMultiplier;
 
+        // NEW: Cap pirate speeds so they never exceed player's MAX_PLAYER_SPEED
+        const MAX_PLAYER_SPEED = PROJECTILE_SPEED * 0.9;
+        const PIRATE_MAX_SPEED_FINAL = Math.min(
+          PIRATE_TURBO_MAX_SPEED,
+          MAX_PLAYER_SPEED
+        );
+
         const firstPirate = pirates[0];
         const timeLeft = Math.ceil(firstPirate.timer / 60);
         invasionTimer.textContent = `${timeLeft}s`;
@@ -1364,12 +1378,9 @@
             pirate.angle += angleDiff * pirate.rotationSpeed;
             pirate.angle %= Math.PI * 2;
 
-            const targetMaxSpeed = keys.Shift
-              ? PIRATE_TURBO_MAX_SPEED
-              : PIRATE_BASE_MAX_SPEED;
-            const targetAcceleration = keys.Shift
-              ? PIRATE_TURBO_ACCELERATION
-              : PIRATE_BASE_ACCELERATION;
+            const targetMaxSpeed = PIRATE_MAX_SPEED_FINAL; // Use capped speed
+            const targetAcceleration = PIRATE_TURBO_ACCELERATION;
+
             pirate.speed = Math.min(
               targetMaxSpeed,
               pirate.speed + targetAcceleration
@@ -1396,7 +1407,7 @@
         }
 
         if (isPlayerBeingStolenFrom) {
-          stealProgress = Math.min(100, stealProgress + 0.5);
+          stealProgress = Math.min(100, stealProgress + 0.05); // UPDATED: Slowed charge rate (0.5 -> 0.05)
           stealBarContainer.style.display = "block";
           stealBar.style.width = `${stealProgress}%`;
         } else {
@@ -1512,8 +1523,9 @@
         }
       }
 
-      // NEW: Check collisions between projectiles and enemies
+      // NEW: Check collisions between projectiles and enemies AND local player
       function checkProjectileCollisions() {
+        // 1. Check local player's projectiles against enemies/opponents
         for (let i = projectiles.length - 1; i >= 0; i--) {
           const p = projectiles[i];
           let hit = false;
@@ -1548,24 +1560,25 @@
             }
           }
 
-          // NEW: Check Live Opponents (Multiplayer)
-          if (!hit) {
+          // Check Live Opponents (Multiplayer)
+          if (!hit && !player.isInvulnerable) {
+            // Player projectiles against opponents
             for (let k = livePlayers.length - 1; k >= 0; k--) {
               const opponent = livePlayers[k];
-              // Simple distance check (assuming all players use ship radius 15)
               const distSq =
                 Math.pow(p.x - opponent.x, 2) + Math.pow(p.y - opponent.y, 2);
-              const radiusSumSq = Math.pow(p.radius + 15, 2);
+              const radiusSumSq = Math.pow(p.radius + 15, 2); // Player ship radius is 15
 
               if (distSq < radiusSumSq) {
-                // Simple solution: Remove opponent from lobby when hit
-                deleteDoc(
-                  doc(
-                    db,
-                    `artifacts/${appId}/public/data/live_players/${opponent.id}`
-                  )
+                // NEW: Decrement opponent HP in Firestore
+                const opponentRef = doc(
+                  db,
+                  `artifacts/${appId}/public/data/live_players/${opponent.id}`
                 );
-                score += 500; // Reward for player kill
+                updateDoc(opponentRef, {
+                  hp: opponent.hp - p.damage, // Apply damage
+                });
+                score += 10; // Small score reward for hit
                 hit = true;
                 break;
               }
@@ -1574,6 +1587,27 @@
 
           if (hit) {
             projectiles.splice(i, 1); // Remove projectile on hit
+          }
+        }
+
+        // 2. Check Opponent projectiles against local player
+        if (!player.isInvulnerable) {
+          for (let i = opponentProjectiles.length - 1; i >= 0; i--) {
+            const opP = opponentProjectiles[i];
+            const distSq =
+              Math.pow(opP.x - player.x, 2) + Math.pow(opP.y - player.y, 2);
+            const radiusSumSq = Math.pow(opP.radius + player.radius, 2);
+
+            if (distSq < radiusSumSq) {
+              player.hp -= opP.damage;
+              opponentProjectiles.splice(i, 1); // Remove projectile
+
+              if (player.hp <= 0) {
+                // TODO: Implement proper death/game over logic for local player
+                console.log("Local Player Defeated!");
+                resetGameData(); // For now, just reset the game
+              }
+            }
           }
         }
       }
@@ -1669,7 +1703,7 @@
           KEYBOARD_CONTROLS.includes(key) ||
           KEYBOARD_CONTROLS.includes(key.toLowerCase())
         ) {
-          // If it's a directional key or Shift, release the state.
+          // If it's a directional key, release the state.
           if (key !== " ") {
             keys[key] = false;
           }
@@ -1767,6 +1801,11 @@
         // Initial rank check to set lastAchievedRankScore
         lastAchievedRankScore = getCurrentRank(score).score;
 
+        // Ensure player starts with full HP and invulnerability
+        player.hp = 100;
+        player.isInvulnerable = true;
+        player.invulnerabilityTimer = 10 * 60; // 10 seconds at 60 FPS
+
         gameState = "playing";
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
@@ -1791,9 +1830,19 @@
         camera.y = 0;
         player.fireTimer = 0; // NEW: Reset fire timer
 
+        // NEW: Player Respawn/Shield Setup on Death/Reset
+        player.hp = 100;
+        player.isInvulnerable = false;
+        player.invulnerabilityTimer = 0;
+        if (station) {
+          player.x = station.x;
+          player.y = station.y;
+        }
+
         removePlayerStatus(); // NEW: Remove player from live lobby on game reset
 
         projectiles = []; // NEW: Reset projectiles array
+        opponentProjectiles = []; // NEW: Reset opponent projectiles
         planets = [];
         asteroids = [];
         superInvaders = [];
@@ -1903,6 +1952,14 @@
             player.fireTimer--;
           }
 
+          // NEW: Update Invulnerability Timer
+          if (player.isInvulnerable) {
+            player.invulnerabilityTimer--;
+            if (player.invulnerabilityTimer <= 0) {
+              player.isInvulnerable = false;
+            }
+          }
+
           // NEW: Update live player status to Firestore
           updatePlayerStatus();
 
@@ -1957,6 +2014,25 @@
               screenY > canvas.height + 200
             ) {
               projectiles.splice(i, 1);
+            }
+          }
+
+          // NEW: Update opponent projectiles position (synced locally for visualization)
+          for (let i = opponentProjectiles.length - 1; i >= 0; i--) {
+            const opP = opponentProjectiles[i];
+            opP.x += opP.velX;
+            opP.y += opP.velY;
+
+            // Remove projectiles that go off-screen
+            const screenX = opP.x - camera.x + canvas.width / 2;
+            const screenY = opP.y - camera.y + canvas.height / 2;
+            if (
+              screenX < -200 ||
+              screenX > canvas.width + 200 ||
+              screenY < -200 ||
+              screenY > canvas.height + 200
+            ) {
+              opponentProjectiles.splice(i, 1);
             }
           }
 
@@ -2170,6 +2246,18 @@
           ctx.fillStyle = "#FFDD44"; // Yellow color for opponents
           ctx.fillText(opponent.name, opScreenX, opScreenY - 30);
           ctx.fillText(opponent.score, opScreenX, opScreenY + 40);
+
+          // Draw Opponent HP Bar
+          const barWidth = 40;
+          const barHeight = 4;
+          const healthRatio = opponent.hp / 100; // Opponents have 100 HP
+          ctx.fillStyle = "red";
+          ctx.fillRect(
+            opScreenX - barWidth / 2,
+            opScreenY + shipImages.ship2.height / 2 + 5,
+            barWidth * healthRatio,
+            barHeight
+          );
         });
         // END NEW: Draw Live Opponents
 
@@ -2259,6 +2347,20 @@
           ctx.shadowBlur = 0;
         });
 
+        // NEW: Draw Opponent Projectiles (White/Blue for distinction)
+        opponentProjectiles.forEach((opP) => {
+          const opPScreenX = opP.x - camera.x + canvas.width / 2;
+          const opPScreenY = opP.y - camera.y + canvas.height / 2;
+
+          ctx.beginPath();
+          ctx.arc(opPScreenX, opPScreenY, opP.radius, 0, Math.PI * 2);
+          ctx.fillStyle = "#00FFFF"; // Cyan projectile
+          ctx.shadowColor = "#00FF00";
+          ctx.shadowBlur = 10;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        });
+
         if (currentNearestPlanet) {
           nearestPlanetInfo = {
             name: currentNearestPlanet.discovered
@@ -2296,6 +2398,17 @@
           ctx.save();
           ctx.translate(canvas.width / 2, canvas.height / 2);
           ctx.rotate(player.angle + Math.PI / 2);
+
+          // NEW: Invulnerability Shield Glow
+          if (player.isInvulnerable) {
+            const pulseAlpha =
+              Math.abs(Math.sin(performance.now() / 100)) * 0.8;
+            ctx.beginPath();
+            ctx.arc(0, 0, player.radius + 10, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(0, 255, 255, ${pulseAlpha})`;
+            ctx.fill();
+          }
+
           ctx.drawImage(
             player.image,
             -player.image.width / 2,
@@ -2303,6 +2416,34 @@
           );
           ctx.restore();
         }
+
+        // NEW: Draw Local Player HP Bar (Top of Screen)
+        if (gameState === "playing") {
+          const healthBarWidth = canvas.width * 0.25;
+          const healthBarHeight = 15;
+          const hpRatio = player.hp / 100;
+          const x = canvas.width - healthBarWidth - 10;
+          const y = 10;
+
+          // Background
+          ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+          ctx.fillRect(x, y, healthBarWidth, healthBarHeight);
+
+          // Health Fill
+          ctx.fillStyle = hpRatio > 0.3 ? "#33FF33" : "#FF4444";
+          ctx.fillRect(x, y, healthBarWidth * hpRatio, healthBarHeight);
+
+          // Border
+          ctx.strokeStyle = "#00ffff";
+          ctx.strokeRect(x, y, healthBarWidth, healthBarHeight);
+
+          // Text
+          ctx.font = '12px "Press Start 2P"';
+          ctx.fillStyle = "white";
+          ctx.textAlign = "right";
+          ctx.fillText(`HP: ${player.hp}`, x + healthBarWidth - 5, y + 12);
+        }
+        // END NEW: Draw Local Player HP Bar
 
         if (gameState === "playing") {
           ctx.font = '16px "Press Start 2P"';
@@ -2351,7 +2492,7 @@
         const joystickKnob = document.getElementById("joystick-knob");
         // Removed turbo button reference
         const fireButton = document.getElementById("shoot-button");
-        const dockButton = document.getElementById("dock-button"); // Keep dock button reference
+        const dockButton = document.getElementById("dock-button");
 
         let joyStickActive = false;
         let joyStickId = null;
@@ -2384,8 +2525,7 @@
                 const dx = touch.clientX - centerX;
                 const dy = touch.clientY - centerY;
 
-                // FIX: Corrected rotation offset for mobile joystick
-                // Reverting to the most robust solution for vertical-facing canvas sprites
+                // FIX: Corrected rotation offset for mobile joystick (standard fix for vertical sprites)
                 player.angle = Math.atan2(dy, dx) - Math.PI / 2;
 
                 // Clamp knob position
