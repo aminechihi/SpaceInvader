@@ -489,7 +489,7 @@
       }
       .touch-button {
         position: absolute;
-        bottom: 30px;
+        bottom: 50px; /* Increased base height */
         width: 70px;
         height: 70px;
         border-radius: 50%;
@@ -525,27 +525,25 @@
         background: rgba(255, 255, 255, 0.4);
       }
 
-      /* NEW: Shoot Button Positioning */
+      /* New positions for the buttons to increase spacing */
       #shoot-button {
-        right: 100px;
-        bottom: 40px;
+        right: 40px;
+        bottom: 90px; /* Moved up for better separation from joystick */
         background: rgba(255, 51, 51, 0.2);
         border-color: rgba(255, 51, 51, 0.4);
       }
 
-      /* Reposition turbo button */
-      #turbo-button {
-        right: 180px;
-        bottom: 90px;
-      }
-      /* REMOVED: #brake-button styles */
+      /* Dock button repositioned (since Turbo is removed) */
       #dock-button {
         display: none;
-        right: 30px; /* Moved to where brake button was */
-        bottom: 40px;
+        right: 130px; /* New position for more spacing */
+        bottom: 90px;
         background: rgba(0, 255, 255, 0.2);
         border-color: rgba(0, 255, 255, 0.4);
       }
+
+      /* Turbo button element is REMOVED from HTML */
+
       #dock-prompt {
         display: none;
         position: absolute;
@@ -570,10 +568,9 @@
         **Controls (PC/Keyboard):**<br />
         <br />
         **&larr; &rarr; Arrow Keys:** Rotate Ship<br />
-        **&uarr; Arrow Key:** Thrust Forward<br />
+        **&uarr; Arrow Key:** Thrust Forward (MAX SPEED)<br />
         **&darr; Arrow Key:** Reverse Thrust<br />
         **Spacebar:** Fire Projectile 💥<br />
-        **Shift:** Use Turbo Thrusters<br />
         **E:** Interact (e.g., Close Panel / Dock)
       </p>
       <div>
@@ -691,7 +688,6 @@
 
       <div id="shoot-button" class="touch-button">FIRE</div>
 
-      <div id="turbo-button" class="touch-button">TURBO</div>
       <div id="dock-button" class="touch-button">DOCK</div>
     </div>
 
@@ -713,6 +709,9 @@
         limit,
         setLogLevel,
         getDocs,
+        updateDoc, // NEW for multiplayer state updates
+        doc, // NEW for deleting player status
+        deleteDoc, // NEW for deleting player status
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
       // --- SETUP ---
@@ -762,6 +761,10 @@
 
       const shootButton = document.getElementById("shoot-button");
 
+      // Multiplayer State
+      let livePlayers = []; // Holds all opponent data
+      let playerDocRef = null; // Reference to the current player's document in live_players
+
       // --- FIREBASE SETUP ---
       let db, auth;
       const appId =
@@ -784,13 +787,86 @@
           auth = getAuth(app);
           setLogLevel("debug");
           await signInAnonymously(auth);
-          console.log(
-            "Firebase initialized and user signed in.",
-            auth.currentUser?.uid
-          );
+          player.uid = auth.currentUser.uid; // Store the UID
+          console.log("Firebase initialized and user signed in.", player.uid);
           setupLeaderboardListener();
+          setupOpponentListener(); // NEW: Start listening for opponents
+
+          // Clean up player status if browser closes
+          window.addEventListener("beforeunload", removePlayerStatus);
         } catch (error) {
           console.error("Firebase initialization failed:", error);
+        }
+      }
+
+      // --- MULTIPLAYER LOGIC ---
+
+      const PLAYER_UPDATE_INTERVAL = 50; // Milliseconds to update player status (20 TPS)
+
+      function getLivePlayersCollection() {
+        return collection(db, `artifacts/${appId}/public/data/live_players`);
+      }
+
+      function setupOpponentListener() {
+        const livePlayersCol = getLivePlayersCollection();
+        const q = query(livePlayersCol);
+
+        onSnapshot(q, (snapshot) => {
+          livePlayers = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (doc.id !== player.uid) {
+              // Exclude the local player
+              livePlayers.push({ id: doc.id, ...data });
+            }
+          });
+        });
+      }
+
+      let lastUpdateTime = 0;
+
+      function updatePlayerStatus() {
+        if (!player.uid || gameState !== "playing") return;
+
+        const now = performance.now();
+        if (now - lastUpdateTime < PLAYER_UPDATE_INTERVAL) return;
+        lastUpdateTime = now;
+
+        const playerState = {
+          x: player.x,
+          y: player.y,
+          angle: player.angle,
+          name: player.name,
+          score: score,
+          shipId: player.shipId,
+          timestamp: Date.now(),
+        };
+
+        try {
+          if (!playerDocRef) {
+            // Create the document reference if it doesn't exist (first run)
+            const livePlayersCol = getLivePlayersCollection();
+            playerDocRef = doc(livePlayersCol, player.uid);
+            setDoc(playerDocRef, playerState); // Use setDoc to create with known ID
+          } else {
+            // Update the existing document
+            updateDoc(playerDocRef, playerState);
+          }
+        } catch (e) {
+          console.error("Failed to update player status:", e);
+        }
+      }
+
+      function removePlayerStatus() {
+        if (playerDocRef) {
+          deleteDoc(playerDocRef)
+            .then(() => {
+              console.log("Player status removed from lobby.");
+              playerDocRef = null;
+            })
+            .catch((e) => {
+              console.error("Failed to remove player status:", e);
+            });
         }
       }
 
@@ -1469,6 +1545,29 @@
             }
           }
 
+          // NEW: Check Live Opponents (Multiplayer)
+          if (!hit) {
+            for (let k = livePlayers.length - 1; k >= 0; k--) {
+              const opponent = livePlayers[k];
+              const distSq =
+                Math.pow(p.x - opponent.x, 2) + Math.pow(p.y - opponent.y, 2);
+              const radiusSumSq = Math.pow(p.radius + 15, 2); // Player ship radius is 15
+
+              if (distSq < radiusSumSq) {
+                // Simple solution: Remove opponent from lobby when hit
+                deleteDoc(
+                  doc(
+                    db,
+                    `artifacts/${appId}/public/data/live_players/${opponent.id}`
+                  )
+                );
+                score += 500; // Reward for player kill
+                hit = true;
+                break;
+              }
+            }
+          }
+
           if (hit) {
             projectiles.splice(i, 1); // Remove projectile on hit
           }
@@ -1500,7 +1599,6 @@
         ArrowDown: false,
         ArrowLeft: false,
         ArrowRight: false,
-        Shift: false,
         " ": false, // Space is only used for keydown event (shooting)
         e: false,
       };
@@ -1512,18 +1610,11 @@
         "ArrowDown",
         "ArrowLeft",
         "ArrowRight",
-        "Shift",
         " ",
         "e",
         "E",
       ];
-      const MOVEMENT_KEYS = [
-        "ArrowUp",
-        "ArrowDown",
-        "ArrowLeft",
-        "ArrowRight",
-        "Shift",
-      ];
+      const MOVEMENT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]; // Removed Shift
 
       window.addEventListener("keydown", (e) => {
         const key = e.key;
@@ -1573,7 +1664,7 @@
           KEYBOARD_CONTROLS.includes(key) ||
           KEYBOARD_CONTROLS.includes(key.toLowerCase())
         ) {
-          // If it's a directional key or Shift, release the state.
+          // If it's a directional key, release the state.
           if (key !== " ") {
             keys[key] = false;
           }
@@ -1695,6 +1786,8 @@
         camera.y = 0;
         player.fireTimer = 0; // NEW: Reset fire timer
 
+        removePlayerStatus(); // NEW: Remove player from live lobby on game reset
+
         projectiles = []; // NEW: Reset projectiles array
         planets = [];
         asteroids = [];
@@ -1805,19 +1898,19 @@
             player.fireTimer--;
           }
 
+          // NEW: Update live player status to Firestore
+          updatePlayerStatus();
+
           // Check for rank up every frame based on current score
           checkRankUp();
 
           // UPDATED: Calculate max player speed based on PROJECTILE_SPEED
           const MAX_PLAYER_SPEED = PROJECTILE_SPEED * 0.9;
 
-          // Determine base acceleration and cap
-          let accel = player.acceleration;
-          let maxSpeed = MAX_PLAYER_SPEED; // Use capped max speed for Turbo to prevent outrunning shots
-
-          if (keys.Shift) {
-            accel = player.turboAcceleration;
-          }
+          // Determine acceleration
+          // TURBO IS ALWAYS ACTIVE
+          let accel = player.turboAcceleration;
+          let maxSpeed = MAX_PLAYER_SPEED;
 
           // 1. Rotation (Left/Right)
           if (keys.ArrowLeft) player.angle -= player.rotationSpeed;
@@ -1825,6 +1918,7 @@
 
           // 2. Thrust Forward/Reverse (Up/Down)
           if (keys.ArrowUp || touchMoving) {
+            // Apply acceleration, capped by max speed
             player.speed = Math.min(maxSpeed, player.speed + accel);
           } else if (keys.ArrowDown) {
             // Apply reverse thrust/deceleration
@@ -1832,7 +1926,7 @@
           }
 
           // Friction/Velocity Update
-          player.speed *= player.friction; // NO MORE SPACEBAR BRAKE
+          player.speed *= player.friction;
 
           // Clamp speed to prevent reverse speed from going too far back
           player.speed = Math.max(-10, Math.min(player.speed, maxSpeed));
@@ -1928,10 +2022,7 @@
 
         ctx.save();
         let invaderShake = superInvaders.length > 0;
-        if (
-          (gameState === "playing" && keys.Shift && player.speed > 5) ||
-          invaderShake
-        ) {
+        if ((gameState === "playing" && player.speed > 5) || invaderShake) {
           const shake = invaderShake ? 2 : player.speed * 0.2;
           ctx.translate(
             (Math.random() - 0.5) * shake,
@@ -1948,7 +2039,7 @@
           const pY =
             (((s.y - camera.y * s.speed) % canvas.height) + canvas.height) %
             canvas.height;
-          if (keys.Shift && player.speed > 2) {
+          if (player.speed > 2) {
             const len = player.speed * s.speed * 0.6,
               sX = pX - Math.cos(player.angle) * len,
               sY = pY - Math.sin(player.angle) * len;
@@ -2047,6 +2138,35 @@
             );
           }
         }
+
+        // NEW: Draw Live Opponents
+        livePlayers.forEach((opponent) => {
+          const opScreenX = opponent.x - camera.x + canvas.width / 2;
+          const opScreenY = opponent.y - camera.y + canvas.height / 2;
+
+          ctx.save();
+          ctx.translate(opScreenX, opScreenY);
+          ctx.rotate(opponent.angle + Math.PI / 2);
+
+          // Draw opponent ship (using ship2 image for distinctiveness)
+          ctx.drawImage(
+            shipImages.ship2,
+            -shipImages.ship2.width / 2,
+            -shipImages.ship2.height / 2,
+            shipImages.ship2.width,
+            shipImages.ship2.height
+          );
+
+          ctx.restore();
+
+          // Draw Opponent Name and Score
+          ctx.font = '12px "Press Start 2P"';
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#FFDD44"; // Yellow color for opponents
+          ctx.fillText(opponent.name, opScreenX, opScreenY - 30);
+          ctx.fillText(opponent.score, opScreenX, opScreenY + 40);
+        });
+        // END NEW: Draw Live Opponents
 
         pirates.forEach((pirate) => {
           const pScreenX = pirate.x - camera.x + canvas.width / 2;
@@ -2224,9 +2344,9 @@
 
         const joystickBase = document.getElementById("joystick-base");
         const joystickKnob = document.getElementById("joystick-knob");
-        const turboButton = document.getElementById("turbo-button");
-        // Removed brake button reference
+        // Removed turbo button reference
         const fireButton = document.getElementById("shoot-button");
+        const dockButton = document.getElementById("dock-button"); // Keep dock button reference
 
         let joyStickActive = false;
         let joyStickId = null;
@@ -2259,8 +2379,18 @@
                 const dx = touch.clientX - centerX;
                 const dy = touch.clientY - centerY;
 
-                // FIX: Corrected rotation offset for mobile joystick (atan2(dx, -dy) for North=0)
-                player.angle = Math.atan2(dx, -dy);
+                // FIX: Corrected rotation offset for mobile joystick
+                // Reverting to the simplest intuitive approach: atan2(dy, dx) + PI/2
+                // The issue is likely how the image is drawn vs the angle.
+                player.angle = Math.atan2(dy, dx) + Math.PI / 2;
+
+                // Debugging console log to check inputs
+                console.log(
+                  `Joystick: dx=${dx.toFixed(0)}, dy=${dy.toFixed(0)}, angle=${(
+                    (player.angle * 180) /
+                    Math.PI
+                  ).toFixed(0)}`
+                );
 
                 // Clamp knob position
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2313,8 +2443,9 @@
           });
         };
 
-        setupButton(turboButton, "Shift");
+        // NOTE: Turbo button is removed (Logic is permanent)
         setupButton(fireButton, " ");
+        setupButton(dockButton, "e");
       }
 
       function loadAllAssets() {
