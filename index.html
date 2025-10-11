@@ -712,7 +712,9 @@
         updateDoc,
         doc,
         deleteDoc,
-        setDoc, // ADDED: setDoc is needed for initial player status update
+        setDoc,
+        // NEW: Import increment for atomic writes
+        increment,
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
       // --- SETUP ---
@@ -808,17 +810,43 @@
         return collection(db, `artifacts/${appId}/public/data/live_players`);
       }
 
+      // Track last shot time locally for opponents to spawn projectiles
+      let lastOpponentShots = {};
+
       function setupOpponentListener() {
         const livePlayersCol = getLivePlayersCollection();
         const q = query(livePlayersCol);
 
         onSnapshot(q, (snapshot) => {
           livePlayers = [];
+          const now = Date.now();
+
           snapshot.forEach((doc) => {
             const data = doc.data();
             if (doc.id !== player.uid) {
               // Exclude the local player
               livePlayers.push({ id: doc.id, ...data });
+
+              // NEW: Check if the opponent just shot
+              const lastShot = lastOpponentShots[doc.id] || 0;
+              if (
+                data.lastShotTime &&
+                data.lastShotTime > lastShot &&
+                now - data.lastShotTime < 1000
+              ) {
+                // Spawn a projectile locally based on opponent's state
+                opponentProjectiles.push({
+                  x: data.x,
+                  y: data.y,
+                  radius: PROJECTILE_RADIUS,
+                  angle: data.lastShotAngle,
+                  speed: PROJECTILE_SPEED,
+                  damage: PROJECTILE_DAMAGE,
+                  velX: PROJECTILE_SPEED * Math.cos(data.lastShotAngle),
+                  velY: PROJECTILE_SPEED * Math.sin(data.lastShotAngle),
+                });
+                lastOpponentShots[doc.id] = data.lastShotTime;
+              }
             }
           });
         });
@@ -842,6 +870,7 @@
           shipId: player.shipId,
           hp: player.hp, // NEW: Sync local player HP
           timestamp: Date.now(),
+          // NOTE: lastShotTime and lastShotAngle are only sent when shooting
         };
 
         try {
@@ -1206,10 +1235,11 @@
       const PROJECTILE_SPEED = 30; // UPDATED: Increased speed
       const PROJECTILE_RADIUS = 3;
       const PROJECTILE_DAMAGE = 1;
-      let projectiles = []; // Array to hold active projectiles (yours and opponents')
+      let projectiles = []; // Array to hold active projectiles (yours)
 
       // Projectiles fired by opponents, but tracked locally for quick collision checks
       let opponentProjectiles = [];
+      const OPPONENT_PROJECTILE_SPEED = PROJECTILE_SPEED;
 
       const REPULSION_RANGE = 150;
       const REPULSION_STRENGTH = 0.5;
@@ -1334,13 +1364,8 @@
         let isPlayerBeingStolenFrom = false;
 
         // Calculate current maximum speeds based on rank multiplier
-        const PIRATE_BASE_MAX_SPEED =
-          INITIAL_PIRATE_BASE_MAX_SPEED * basePirateSpeedMultiplier;
         const PIRATE_TURBO_MAX_SPEED =
           INITIAL_PIRATE_TURBO_MAX_SPEED * basePirateSpeedMultiplier;
-
-        const PIRATE_BASE_ACCELERATION =
-          INITIAL_PIRATE_BASE_ACCELERATION * basePirateSpeedMultiplier;
         const PIRATE_TURBO_ACCELERATION =
           INITIAL_PIRATE_TURBO_ACCELERATION * basePirateSpeedMultiplier;
 
@@ -1515,6 +1540,14 @@
           });
           player.fireTimer = player.fireRate; // Reset fire timer
 
+          // NEW: Update Firestore to show player shot (for opponents to see)
+          if (playerDocRef) {
+            updateDoc(playerDocRef, {
+              lastShotTime: Date.now(),
+              lastShotAngle: player.angle,
+            });
+          }
+
           // Play shoot sound effect
           shootAudio.currentTime = 0;
           shootAudio
@@ -1570,15 +1603,21 @@
               const radiusSumSq = Math.pow(p.radius + 15, 2); // Player ship radius is 15
 
               if (distSq < radiusSumSq) {
-                // NEW: Decrement opponent HP in Firestore
+                // FIX: Apply damage atomically to opponent HP in Firestore
                 const opponentRef = doc(
                   db,
                   `artifacts/${appId}/public/data/live_players/${opponent.id}`
                 );
                 updateDoc(opponentRef, {
-                  hp: opponent.hp - p.damage, // Apply damage
-                });
-                score += 10; // Small score reward for hit
+                  hp: increment(-p.damage), // Use atomic decrement
+                })
+                  .then(() => {
+                    score += 10; // Small score reward for hit
+                  })
+                  .catch((e) => {
+                    console.warn("Failed atomic HP update:", e);
+                  });
+
                 hit = true;
                 break;
               }
@@ -1591,21 +1630,34 @@
         }
 
         // 2. Check Opponent projectiles against local player
-        if (!player.isInvulnerable) {
-          for (let i = opponentProjectiles.length - 1; i >= 0; i--) {
-            const opP = opponentProjectiles[i];
-            const distSq =
-              Math.pow(opP.x - player.x, 2) + Math.pow(opP.y - player.y, 2);
-            const radiusSumSq = Math.pow(opP.radius + player.radius, 2);
+        if (player.isInvulnerable) return;
 
-            if (distSq < radiusSumSq) {
-              player.hp -= opP.damage;
-              opponentProjectiles.splice(i, 1); // Remove projectile
+        for (let i = opponentProjectiles.length - 1; i >= 0; i--) {
+          const opP = opponentProjectiles[i];
+          const distSq =
+            Math.pow(opP.x - player.x, 2) + Math.pow(opP.y - player.y, 2);
+          const radiusSumSq = Math.pow(opP.radius + player.radius, 2);
 
-              if (player.hp <= 0) {
-                // TODO: Implement proper death/game over logic for local player
-                console.log("Local Player Defeated!");
-                resetGameData(); // For now, just reset the game
+          if (distSq < radiusSumSq) {
+            player.hp -= opP.damage;
+            opponentProjectiles.splice(i, 1); // Remove projectile
+
+            if (player.hp <= 0) {
+              // Player is defeated - Respawn near station and grant shield
+              console.log("Local Player Defeated! Respawning.");
+              resetGameData();
+
+              // Immediately respawn and apply shield
+              player.hp = 100;
+              player.isInvulnerable = true;
+              player.invulnerabilityTimer = 10 * 60; // 10 seconds at 60 FPS
+
+              if (station) {
+                player.x = station.x + Math.random() * 50 - 25;
+                player.y = station.y + Math.random() * 50 - 25;
+              } else {
+                player.x = 0;
+                player.y = 0;
               }
             }
           }
@@ -1832,11 +1884,16 @@
 
         // NEW: Player Respawn/Shield Setup on Death/Reset
         player.hp = 100;
-        player.isInvulnerable = false;
-        player.invulnerabilityTimer = 0;
+        player.isInvulnerable = true;
+        player.invulnerabilityTimer = 10 * 60; // 10 seconds at 60 FPS
+
+        // Position near station if it exists
         if (station) {
-          player.x = station.x;
-          player.y = station.y;
+          player.x = station.x + Math.random() * 50 - 25;
+          player.y = station.y + Math.random() * 50 - 25;
+        } else {
+          player.x = 0;
+          player.y = 0;
         }
 
         removePlayerStatus(); // NEW: Remove player from live lobby on game reset
@@ -2017,7 +2074,7 @@
             }
           }
 
-          // NEW: Update opponent projectiles position (synced locally for visualization)
+          // NEW: Update opponent projectiles position
           for (let i = opponentProjectiles.length - 1; i >= 0; i--) {
             const opP = opponentProjectiles[i];
             opP.x += opP.velX;
@@ -2333,7 +2390,7 @@
           );
         });
 
-        // NEW: Draw Projectiles (Red)
+        // NEW: Draw Player Projectiles (Red)
         projectiles.forEach((p) => {
           const pScreenX = p.x - camera.x + canvas.width / 2;
           const pScreenY = p.y - camera.y + canvas.height / 2;
@@ -2347,7 +2404,7 @@
           ctx.shadowBlur = 0;
         });
 
-        // NEW: Draw Opponent Projectiles (White/Blue for distinction)
+        // NEW: Draw Opponent Projectiles (Cyan)
         opponentProjectiles.forEach((opP) => {
           const opPScreenX = opP.x - camera.x + canvas.width / 2;
           const opPScreenY = opP.y - camera.y + canvas.height / 2;
@@ -2454,6 +2511,15 @@
 
           ctx.fillText(`${player.name} (${currentRankName})`, 10, 30);
           ctx.fillText(`Score: ${score}`, 10, 60);
+
+          if (player.isInvulnerable) {
+            ctx.fillStyle = "#00ffff";
+            ctx.fillText(
+              `SHIELD ACTIVE: ${Math.ceil(player.invulnerabilityTimer / 60)}s`,
+              canvas.width - 250,
+              30
+            );
+          }
 
           if (nearestPlanetInfo.name) {
             ctx.fillStyle = nearestPlanetInfo.discovered
