@@ -713,7 +713,6 @@
         doc,
         deleteDoc,
         setDoc,
-        // NEW: Import increment for atomic writes
         increment,
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -805,24 +804,30 @@
       // --- MULTIPLAYER LOGIC ---
 
       const PLAYER_UPDATE_INTERVAL = 50; // Milliseconds to update player status (20 TPS)
+      const AFK_TIMEOUT = 60000; // 60 seconds in milliseconds
 
       function getLivePlayersCollection() {
         return collection(db, `artifacts/${appId}/public/data/live_players`);
       }
 
-      // Track last shot time locally for opponents to spawn projectiles
-      let lastOpponentShots = {};
-
       function setupOpponentListener() {
         const livePlayersCol = getLivePlayersCollection();
         const q = query(livePlayersCol);
+        const now = Date.now();
 
         onSnapshot(q, (snapshot) => {
           livePlayers = [];
-          const now = Date.now();
 
           snapshot.forEach((doc) => {
             const data = doc.data();
+
+            // NEW: AFK/Timeout Filter (Server-side AFK)
+            if (now - data.timestamp > AFK_TIMEOUT) {
+              // OPTIONAL: Delete old documents here if you have write access and want quick clean-up
+              // deleteDoc(doc(db, `artifacts/${appId}/public/data/live_players/${doc.id}`));
+              return; // Skip drawing this AFK player
+            }
+
             if (doc.id !== player.uid) {
               // Exclude the local player
               livePlayers.push({ id: doc.id, ...data });
@@ -840,10 +845,12 @@
                   y: data.y,
                   radius: PROJECTILE_RADIUS,
                   angle: data.lastShotAngle,
-                  speed: PROJECTILE_SPEED,
+                  speed: OPPONENT_PROJECTILE_SPEED,
                   damage: PROJECTILE_DAMAGE,
-                  velX: PROJECTILE_SPEED * Math.cos(data.lastShotAngle),
-                  velY: PROJECTILE_SPEED * Math.sin(data.lastShotAngle),
+                  velX:
+                    OPPONENT_PROJECTILE_SPEED * Math.cos(data.lastShotAngle),
+                  velY:
+                    OPPONENT_PROJECTILE_SPEED * Math.sin(data.lastShotAngle),
                 });
                 lastOpponentShots[doc.id] = data.lastShotTime;
               }
@@ -869,8 +876,7 @@
           score: score,
           shipId: player.shipId,
           hp: player.hp, // NEW: Sync local player HP
-          timestamp: Date.now(),
-          // NOTE: lastShotTime and lastShotAngle are only sent when shooting
+          timestamp: Date.now(), // UPDATED: Time of last status update
         };
 
         try {
@@ -1645,20 +1651,8 @@
             if (player.hp <= 0) {
               // Player is defeated - Respawn near station and grant shield
               console.log("Local Player Defeated! Respawning.");
+              // This will trigger resetGameData, which sets the player's new position and shield
               resetGameData();
-
-              // Immediately respawn and apply shield
-              player.hp = 100;
-              player.isInvulnerable = true;
-              player.invulnerabilityTimer = 10 * 60; // 10 seconds at 60 FPS
-
-              if (station) {
-                player.x = station.x + Math.random() * 50 - 25;
-                player.y = station.y + Math.random() * 50 - 25;
-              } else {
-                player.x = 0;
-                player.y = 0;
-              }
             }
           }
         }
