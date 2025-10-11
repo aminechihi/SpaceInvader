@@ -528,7 +528,7 @@
       /* New positions for the buttons to increase spacing */
       #shoot-button {
         right: 40px;
-        bottom: 90px; /* Moved up for better separation from joystick */
+        bottom: 90px;
         background: rgba(255, 51, 51, 0.2);
         border-color: rgba(255, 51, 51, 0.4);
       }
@@ -536,7 +536,7 @@
       /* Dock button repositioned (since Turbo is removed) */
       #dock-button {
         display: none;
-        right: 130px; /* New position for more spacing */
+        right: 130px;
         bottom: 90px;
         background: rgba(0, 255, 255, 0.2);
         border-color: rgba(0, 255, 255, 0.4);
@@ -709,9 +709,10 @@
         limit,
         setLogLevel,
         getDocs,
-        updateDoc, // NEW for multiplayer state updates
-        doc, // NEW for deleting player status
-        deleteDoc, // NEW for deleting player status
+        updateDoc,
+        doc,
+        deleteDoc,
+        setDoc, // ADDED: setDoc is needed for initial player status update
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
       // --- SETUP ---
@@ -869,6 +870,7 @@
             });
         }
       }
+      // --- END MULTIPLAYER LOGIC ---
 
       // --- LEADERBOARD LOGIC ---
       let leaderboardData = [];
@@ -1194,6 +1196,7 @@
         shipId: null,
         fireRate: 15, // Shots per second, higher number is slower rate.
         fireTimer: 0,
+        uid: null, // Initialized later in initFirebase
       };
 
       const PROJECTILE_SPEED = 30; // UPDATED: Increased speed
@@ -1549,9 +1552,10 @@
           if (!hit) {
             for (let k = livePlayers.length - 1; k >= 0; k--) {
               const opponent = livePlayers[k];
+              // Simple distance check (assuming all players use ship radius 15)
               const distSq =
                 Math.pow(p.x - opponent.x, 2) + Math.pow(p.y - opponent.y, 2);
-              const radiusSumSq = Math.pow(p.radius + 15, 2); // Player ship radius is 15
+              const radiusSumSq = Math.pow(p.radius + 15, 2);
 
               if (distSq < radiusSumSq) {
                 // Simple solution: Remove opponent from lobby when hit
@@ -1594,6 +1598,7 @@
       }
 
       // REVERTED to 4-way arrow key controls for rotational movement
+      // REMOVED Shift key from default keys object since it's removed from UI
       const keys = {
         ArrowUp: false,
         ArrowDown: false,
@@ -1614,7 +1619,7 @@
         "e",
         "E",
       ];
-      const MOVEMENT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]; // Removed Shift
+      const MOVEMENT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
 
       window.addEventListener("keydown", (e) => {
         const key = e.key;
@@ -1664,7 +1669,7 @@
           KEYBOARD_CONTROLS.includes(key) ||
           KEYBOARD_CONTROLS.includes(key.toLowerCase())
         ) {
-          // If it's a directional key, release the state.
+          // If it's a directional key or Shift, release the state.
           if (key !== " ") {
             keys[key] = false;
           }
@@ -1926,7 +1931,7 @@
           }
 
           // Friction/Velocity Update
-          player.speed *= player.friction;
+          player.speed *= player.friction; // NO MORE SPACEBAR BRAKE
 
           // Clamp speed to prevent reverse speed from going too far back
           player.speed = Math.max(-10, Math.min(player.speed, maxSpeed));
@@ -2380,17 +2385,8 @@
                 const dy = touch.clientY - centerY;
 
                 // FIX: Corrected rotation offset for mobile joystick
-                // Reverting to the simplest intuitive approach: atan2(dy, dx) + PI/2
-                // The issue is likely how the image is drawn vs the angle.
-                player.angle = Math.atan2(dy, dx) + Math.PI / 2;
-
-                // Debugging console log to check inputs
-                console.log(
-                  `Joystick: dx=${dx.toFixed(0)}, dy=${dy.toFixed(0)}, angle=${(
-                    (player.angle * 180) /
-                    Math.PI
-                  ).toFixed(0)}`
-                );
+                // Reverting to the most robust solution for vertical-facing canvas sprites
+                player.angle = Math.atan2(dy, dx) - Math.PI / 2;
 
                 // Clamp knob position
                 const dist = Math.sqrt(dx * dx + dy * dy);
